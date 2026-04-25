@@ -12,14 +12,37 @@ docs/
 
 # Dotenv file
 .env
-.env
 .env.*
+
+# Node / Dependencies
 node_modules/
-out/
-cache/
-broadcast/
-*.pyc
-__pycache__/
+dist/
+build/
+.next/
+
+# Python Utility Scripts (Not part of protocol)
+add_connect_button.py
+convert.py
+fix_jsx.py
+fix_nav.py
+update_css.py
+update_page.py
+update_pool_page.py
+update_sentinel_page.py
+update_protect_page.py
+update_admin_page.py
+patch_backend.py
+auto_commit.py
+auto_commit.log
+nohup.out
+
+# OS files
 .DS_Store
+
+# Forge / Foundry
 lib/
+foundry.lock
+broadcast/
+
+# Stitch Dashboard (Generated)
 stitch_wraith_protocol_dashboard
