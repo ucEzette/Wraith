@@ -22,3 +22,4 @@ broadcast/
 __pycache__/
 .DS_Store
 lib/
+stitch_wraith_protocol_dashboard
