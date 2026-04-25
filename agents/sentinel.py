@@ -29,10 +29,10 @@ logging.basicConfig(
 logger = logging.getLogger("wraith.sentinel")
 
 # Environment
-RPC_WS_URL = os.getenv("RPC_WS_URL", "ws://localhost:8546")
+RPC_WS_URL = os.getenv("UNICHAIN_RPC_URL", "https://sepolia.unichain.org")
 WRAITH_HOOK_ADDRESS = os.getenv("WRAITH_HOOK_ADDRESS", "")
-SENTINEL_PRIVATE_KEY = os.getenv("SENTINEL_PRIVATE_KEY", "")
-GENSYN_AEL_ENDPOINT = os.getenv("GENSYN_AEL_ENDPOINT", "https://ael.gensyn.ai/v1")
+SENTINEL_PRIVATE_KEY = os.getenv("PRIVATE_KEY", "")
+GENSYN_AEL_ENDPOINT = os.getenv("GENSYN_NODE_URL", "https://api.gensyn.ai/v1/ael/submit")
 GENSYN_API_KEY = os.getenv("GENSYN_API_KEY", "")
 CHAIN_ID = int(os.getenv("CHAIN_ID", "1"))
 

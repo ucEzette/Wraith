@@ -171,7 +171,7 @@ export default function AdminPage() {
 <span>TOXICITY SCORE</span>
 <span className="text-primary-fixed">10000 (MAX)</span>
 </label>
-<input className="w-full h-2 bg-surface-container-high rounded-lg appearance-none cursor-pointer accent-primary-container" max="10000" min="0" type="range" value="10000"/>
+<input className="w-full h-2 bg-surface-container-high rounded-lg appearance-none cursor-pointer accent-primary-container" max="10000" min="0" type="range" defaultValue="10000"/>
 <div className="flex justify-between text-[10px] text-outline mt-1 font-mono-data">
 <span>0 (Safe)</span>
 <span>5000 (Warn)</span>
