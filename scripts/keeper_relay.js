@@ -21,7 +21,7 @@ import { ethers } from "ethers";
 
 const CONFIG = {
   // RPC
-  rpcUrl: process.env.RPC_URL || "http://localhost:8545",
+  rpcUrl: process.env.UNICHAIN_RPC_URL || "https://sepolia.unichain.org",
   wsUrl: process.env.WS_URL || "ws://localhost:8546",
   chainId: parseInt(process.env.CHAIN_ID || "1"),
 
@@ -38,13 +38,13 @@ const CONFIG = {
 
   // KeeperHub
   keeperHub: {
-    endpoint: process.env.KEEPER_HUB_ENDPOINT || "https://api.keeperhub.com/v1",
+    endpoint: process.env.KEEPER_HUB_WEBHOOK || "https://api.keeperhub.com/v1/trigger",
     apiKey: process.env.KEEPER_HUB_API_KEY || "",
     automationId: process.env.KEEPER_AUTOMATION_ID || "",
   },
 
   // Keeper wallet
-  keeperPrivateKey: process.env.KEEPER_PRIVATE_KEY || "",
+  keeperPrivateKey: process.env.PRIVATE_KEY || "",
 
   // Timing
   pollIntervalMs: 2000,
