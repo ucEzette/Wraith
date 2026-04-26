@@ -85,7 +85,7 @@ export default function AdminPage() {
 <span className="material-symbols-outlined text-[14px] text-outline cursor-pointer hover:text-on-surface">edit</span>
 </div>
 <div className="font-mono-data text-mono-data text-on-surface truncate">
-                                {currentSentinel || "0x9f8F...79A2"}
+                                {String(currentSentinel || "0x9f8F...79A2")}
                             </div>
 </div>
 {/* Guardian */}
@@ -101,7 +101,7 @@ export default function AdminPage() {
 <div className="mt-auto pt-sm">
 <button className="w-full bg-surface-container-highest hover:bg-surface-bright text-on-surface font-label-caps text-label-caps py-sm rounded border border-outline-variant transition-colors flex items-center justify-center gap-xs">
 <span className="material-symbols-outlined text-[16px]">sync</span>
-                                isPending ? "PROCESSING..." : "PROPOSE ROLE UPDATE"
+                                {isPending ? "PROCESSING..." : "PROPOSE ROLE UPDATE"}
                             </button>
 </div>
 </div>
