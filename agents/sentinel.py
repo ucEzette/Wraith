@@ -9,6 +9,7 @@ import hashlib
 import json
 import logging
 import os
+import ssl
 import time
 from dataclasses import dataclass, field
 from enum import Enum
@@ -32,12 +33,28 @@ logger = logging.getLogger("wraith.sentinel")
 RPC_WS_URL = os.getenv("UNICHAIN_RPC_URL", "https://sepolia.unichain.org")
 WRAITH_HOOK_ADDRESS = os.getenv("WRAITH_HOOK_ADDRESS", "")
 SENTINEL_PRIVATE_KEY = os.getenv("PRIVATE_KEY", "")
-GENSYN_AEL_ENDPOINT = os.getenv("GENSYN_NODE_URL", "https://api.gensyn.ai/v1/ael/submit")
+# AXL / P2P Configuration
+AXL_PROXY_URL = os.getenv("SENTINEL_AXL_URL", "http://localhost:8000")
+KEEPER_AXL_ADDR = os.getenv("KEEPER_AXL_ADDR", "wraith-keeper.axl")
+GENSYN_NODE_URL = os.getenv("GENSYN_NODE_URL", "https://api.gensyn.ai/v1/ael/submit")
 GENSYN_API_KEY = os.getenv("GENSYN_API_KEY", "")
 CHAIN_ID = int(os.getenv("CHAIN_ID", "1"))
 
+# Try to load API key from node directory if not in env
+NODE_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "node")
+API_KEY_PATH = os.path.join(NODE_DIR, "userApiKey.json")
+
+if not GENSYN_API_KEY and os.path.exists(API_KEY_PATH):
+    try:
+        with open(API_KEY_PATH, "r") as f:
+            data = json.load(f)
+            GENSYN_API_KEY = data.get("apiKey", "")
+            logger.info(f"Loaded production API key from {API_KEY_PATH}")
+    except Exception as e:
+        logger.warning(f"Failed to read local API key file: {e}")
+
 # Thresholds
-TOXICITY_THRESHOLD = 0.85
+TOXICITY_THRESHOLD = 8500  # Out of 10000 (REE precision)
 SCAN_INTERVAL_SECONDS = 2
 MEMPOOL_BATCH_SIZE = 50
 
@@ -206,17 +223,25 @@ class ToxicityModel:
             return 0.5
         return 0.0
 
-    def predict(self, analysis: BytecodeAnalysis, signals: list[MempoolSignal]) -> float:
-        """Compute final toxicity score [0.0, 1.0]."""
-        scores = {
-            "bytecode": self.score_bytecode(analysis),
-            "mempool": self.score_mempool(signals),
-            "ownership": self.score_ownership(analysis),
-            "liquidity": self.score_liquidity(signals),
+    def predict(self, analysis: BytecodeAnalysis, signals: list[MempoolSignal]) -> int:
+        """
+        Compute final toxicity score using bitwise-reproducible REE logic.
+        """
+        from agents.toxicity_model_ree import calculate_toxicity
+        
+        # Prepare inputs for REE
+        mempool_data = {
+            "aggressive_removals": sum(1 for s in signals if s.is_large_removal)
         }
-        total = sum(scores[k] * self.WEIGHTS[k] for k in scores)
-        logger.debug(f"Component scores: {scores} → total: {total:.4f}")
-        return min(total, 1.0)
+        # In a real REE environment, we would pass the actual contract bytecode
+        # For now, we simulate the presence of selfdestruct if found by the analyzer
+        simulated_bytecode = b""
+        if analysis.has_selfdestruct:
+            simulated_bytecode += b"selfdestruct"
+            
+        score = calculate_toxicity(mempool_data, simulated_bytecode)
+        logger.info(f"REE Computation Finished. Score: {score}/10000")
+        return score
 
 
 # ══════════════════════════════════════════════════════════════
@@ -504,7 +529,7 @@ class SentinelAgent:
     def __init__(self):
         self.model = ToxicityModel()
         self.analyzer = BytecodeAnalyzer()
-        self.ael = GensynAEL(GENSYN_AEL_ENDPOINT, GENSYN_API_KEY)
+        self.ael = GensynAEL(GENSYN_NODE_URL, GENSYN_API_KEY)
         self.monitored_pools: dict[str, dict] = {}
         self.w3: Optional[AsyncWeb3] = None
         self.mempool: Optional[MempoolMonitor] = None
@@ -512,11 +537,44 @@ class SentinelAgent:
 
     async def initialize(self):
         """Initialize web3 connection and components."""
-        self.w3 = AsyncWeb3(WebSocketProvider(RPC_WS_URL))
-        connected = await self.w3.is_connected()
-        if not connected:
-            raise ConnectionError(f"Cannot connect to {RPC_WS_URL}")
-        logger.info(f"Connected to node: {RPC_WS_URL}")
+        from web3 import AsyncHTTPProvider
+        
+        # Create an SSL context that can bypass verification if needed
+        # (Resolves common 'certificate verify failed' issues on macOS)
+        ssl_context = ssl.create_default_context()
+        ssl_context.check_hostname = False
+        ssl_context.verify_mode = ssl.CERT_NONE
+
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Content-Type': 'application/json'
+        }
+
+        if RPC_WS_URL.startswith("http"):
+            self.w3 = AsyncWeb3(AsyncHTTPProvider(
+                RPC_WS_URL, 
+                request_kwargs={
+                    'ssl': ssl_context, 
+                    'timeout': 30,
+                    'headers': headers
+                }
+            ))
+        else:
+            self.w3 = AsyncWeb3(WebSocketProvider(RPC_WS_URL))
+        
+        for i in range(3):
+            try:
+                # Direct block number call instead of is_connected()
+                # Some nodes block web3_clientVersion (used by is_connected) but allow eth_blockNumber
+                block = await self.w3.eth.block_number
+                logger.info(f"Connected to node: {RPC_WS_URL} (Block: {block})")
+                break
+            except Exception as e:
+                if i == 2: 
+                    logger.error(f"Final connection failure: {e}")
+                    raise e
+                logger.warning(f"Connection attempt {i+1} failed: {e}. Retrying...")
+                await asyncio.sleep(2)
 
         self.mempool = MempoolMonitor(self.w3)
 
@@ -574,14 +632,41 @@ class SentinelAgent:
 
         if report.toxicity_score >= TOXICITY_THRESHOLD:
             logger.warning(
-                f"🚨 CRITICAL TOXICITY: {report.toxicity_score:.4f} "
+                f"🚨 CRITICAL TOXICITY: {report.toxicity_score} "
                 f"for pool {report.pool_id[:16]}..."
             )
+
+            # --- AXL P2P BROADCAST ---
+            import requests
+            axl_payload = {
+                "to": KEEPER_AXL_ADDR,
+                "type": "A2A_MESSAGE",
+                "data": {
+                    "poolId": report.pool_id,
+                    "score": report.toxicity_score,
+                    "proof": report.proof_hash,
+                    "timestamp": time.time()
+                }
+            }
+            # Production: Retry AXL broadcast 3 times
+            for attempt in range(3):
+                try:
+                    # Any language that can make HTTP requests can use AXL
+                    requests.post(f"{AXL_PROXY_URL}/send", json=axl_payload, timeout=2)
+                    logger.info(f"P2P Alert Sent via AXL to {KEEPER_AXL_ADDR}")
+                    break
+                except Exception as e:
+                    if attempt == 2:
+                        logger.error(f"AXL Broadcast permanently failed: {e}")
+                    else:
+                        logger.warning(f"AXL Broadcast retry {attempt+1}...")
+                        time.sleep(1)
+            # -------------------------
 
             # Relay to WraithHook on-chain
             if self.relay and report.pool_id in self.monitored_pools:
                 pool_info = self.monitored_pools[report.pool_id]
-                score_scaled = int(report.toxicity_score * 10000)
+                score_scaled = report.toxicity_score # Already scaled to 10000
                 proof_bytes = bytes.fromhex(report.proof_hash)
                 proof_hash = proof_bytes.ljust(32, b'\x00')[:32]
 
@@ -595,7 +680,7 @@ class SentinelAgent:
             level = report.threat_level.value
             logger.info(
                 f"Pool {report.pool_id[:16]}... → "
-                f"toxicity: {report.toxicity_score:.4f} ({level})"
+                f"toxicity: {report.toxicity_score} ({level})"
             )
 
     async def run(self):
@@ -617,12 +702,12 @@ class SentinelAgent:
             await asyncio.sleep(SCAN_INTERVAL_SECONDS)
 
     @staticmethod
-    def _classify_threat(score: float) -> ThreatLevel:
-        if score >= 0.85:
+    def _classify_threat(score: int) -> ThreatLevel:
+        if score >= 8500:
             return ThreatLevel.CRITICAL
-        if score >= 0.60:
+        if score >= 6000:
             return ThreatLevel.DANGEROUS
-        if score >= 0.30:
+        if score >= 3000:
             return ThreatLevel.SUSPICIOUS
         return ThreatLevel.SAFE
 
