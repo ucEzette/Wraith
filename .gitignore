@@ -14,6 +14,19 @@ docs/
 .env
 .env.*
 
+# Security & Private Keys
+node/*.json
+node/*.pem
+node/*.key
+*.key
+*.pem
+*.p12
+*.cer
+*.crt
+secrets.json
+api_keys.json
+credentials.json
+
 # Node / Dependencies
 node_modules/
 dist/
