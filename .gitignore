@@ -46,3 +46,6 @@ broadcast/
 
 # Stitch Dashboard (Generated)
 stitch_wraith_protocol_dashboard
+# Wraith Logs & Scratch
+*.log
+scratch/

@@ -22,7 +22,7 @@ import { ethers } from "ethers";
 const CONFIG = {
   // RPC
   rpcUrl: process.env.UNICHAIN_RPC_URL || "https://sepolia.unichain.org",
-  wsUrl: process.env.WS_URL || "ws://localhost:8546",
+  wsUrl: process.env.WS_URL || null,
   chainId: parseInt(process.env.CHAIN_ID || "1"),
 
   // Contracts
@@ -50,6 +50,10 @@ const CONFIG = {
   pollIntervalMs: 2000,
   maxGasPrice: ethers.parseUnits("100", "gwei"),
   rescueDeadlineSeconds: 120,
+
+  // AXL / P2P Configuration
+  axlProxyUrl: process.env.KEEPER_AXL_URL || "http://localhost:8001",
+  axlPollIntervalMs: 1000,
 };
 
 // ══════════════════════════════════════════════════════════════
@@ -340,6 +344,7 @@ class KeeperRelay {
     this.keeperHub = null;
     this.rescueQueue = [];
     this.processedExits = new Set();
+    this.axlWarningLogged = false;
   }
 
   async initialize() {
@@ -376,7 +381,52 @@ class KeeperRelay {
       await this.listener.start();
     }
 
+    // Start AXL P2P Listener
+    this.startAXLListener();
+
     console.log("\n[Init] Keeper Relay ONLINE ✓\n");
+  }
+
+  /**
+   * Listen for Sentinel messages via AXL Agent Mesh.
+   * Polls the local AXL sidecar (localhost:8001).
+   */
+  async startAXLListener() {
+    console.log(`[AXL] Starting mesh polling at ${CONFIG.axlProxyUrl}...`);
+    
+    setInterval(async () => {
+      try {
+        const response = await fetch(`${CONFIG.axlProxyUrl}/messages`);
+        if (response.ok) {
+          const messages = await response.json();
+          if (messages && messages.length > 0) {
+            for (const msg of messages) {
+              if (msg.type === "A2A_MESSAGE") {
+                console.log(`\n📡 AXL MESH ALERT RECEIVED`);
+                console.log(`  Source: Sentinel Node`);
+                console.log(`  Pool: ${msg.data.poolId}`);
+                console.log(`  Score: ${msg.data.score / 100}%`);
+                
+                // Direct trigger of pre-emptive rescue logic
+                if (msg.data.score >= 8500) {
+                  await this.handleAXLThreatAlert(msg.data);
+                }
+              }
+            }
+          }
+        }
+      } catch (error) {
+        if (!this.axlWarningLogged) {
+          console.warn(`[AXL] Proxy not reachable at ${CONFIG.axlProxyUrl}. Mesh polling inactive.`);
+          this.axlWarningLogged = true;
+        }
+      }
+    }, CONFIG.axlPollIntervalMs);
+  }
+
+  async handleAXLThreatAlert(data) {
+    console.log(`[AXL] Pre-emptively warming up flash-rescue cache for pool ${data.poolId}...`);
+    // In production, this would verify the Gensyn proof hash via AEL before relaying
   }
 
   setupEventHandlers() {
@@ -398,6 +448,36 @@ class KeeperRelay {
     this.listener.on("PoisonHookActivated", async (data) => {
       console.log(`[Slash] Attacker ${data.attacker} slashed with 99% fee!`);
     });
+  }
+
+  async startAXLListener() {
+    console.log(`[AXL] Peer-to-Peer node online at ${CONFIG.axlProxyUrl}`);
+    
+    const pollAXL = async () => {
+      try {
+        const res = await fetch(`${CONFIG.axlProxyUrl}/messages`);
+        if (res.ok) {
+          const messages = await res.json();
+          for (const msg of messages) {
+            if (msg.type === "A2A_MESSAGE") {
+              console.log(`\n[AXL] 🛡️ SECURE ALERT RECEIVED FROM ${msg.from}`);
+              console.log(`  Pool: ${msg.data.poolId}`);
+              console.log(`  Score: ${msg.data.score}/10000`);
+              console.log(`  Proof: ${msg.data.proof}`);
+              
+              // Prepare for MEV-protected rescue
+              if (msg.data.score >= 8500) {
+                console.log(`[AXL] Preparing defensive Flash-Rescue strategy...`);
+              }
+            }
+          }
+        }
+      } catch (e) {
+        // Silently retry - node might be starting up
+      }
+      setTimeout(pollAXL, CONFIG.axlPollIntervalMs);
+    };
+    pollAXL();
   }
 
   async handleQuantumExit(data) {
