@@ -8,7 +8,9 @@ import {IPoolManager} from "v4-core/src/interfaces/IPoolManager.sol";
 
 contract MineSalt is Script {
     function run() external view {
-        address deployer = 0x68faEBF19FA57658d37bF885F5377f735FE97D70;
+        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        address deployer = vm.addr(deployerPrivateKey);
+        address factory = 0x4e59b44847b379578588920cA78FbF26c0B4956C; // Create2Deployer
         address poolManager = 0x00B036B58a818B1BC34d502D3fE730Db729e62AC;
         address sentinel = deployer;
         address guardian = deployer;
@@ -18,24 +20,29 @@ contract MineSalt is Script {
             abi.encode(poolManager, sentinel, guardian)
         );
 
+        // Uniswap v4 flags in this version are the 14 least significant bits
+        // beforeRemoveLiquidity = 1 << 9 (0x200)
+        // beforeSwap = 1 << 7 (0x80)
+        // Total = 0x280
         uint160 targetMask = 0x3FFF;
         uint160 targetBits = 0x280;
 
-        for (uint256 i = 0; i < 1000000; i++) {
+        console.log("Mining for 0x280 suffix...");
+        for (uint256 i = 0; i < 5000000; i++) {
             bytes32 salt = bytes32(i);
             address hookAddress = address(uint160(uint256(keccak256(abi.encodePacked(
                 bytes1(0xff),
-                deployer,
+                factory,
                 salt,
                 keccak256(bytecode)
             )))));
 
-            if (uint160(hookAddress) & targetMask == targetBits) {
+            if ((uint160(hookAddress) & targetMask) == targetBits) {
                 console.log("Found salt:", i);
                 console.log("Hook address:", hookAddress);
                 return;
             }
         }
-        console.log("No salt found in 1M iterations.");
+        console.log("No salt found.");
     }
 }
