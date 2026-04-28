@@ -57,7 +57,7 @@ contract WraithHook is IHooks {
     // ══════════════════════════════════════════════════════════════
     event ToxicityUpdated(PoolId indexed poolId, uint256 score, bytes32 proofHash);
     event PoisonHookActivated(PoolId indexed poolId, address indexed attacker, uint24 poisonFee);
-    event QuantumExitTriggered(PoolId indexed poolId, address indexed user, uint256 amount0, uint256 amount1);
+    event QuantumExitTriggered(PoolId indexed poolId, address indexed user, address rescueToken, uint256 amount0, uint256 amount1);
     event SovereignOverride(PoolId indexed poolId, address indexed user);
     event WraithGuardRegistered(address indexed user);
     event WraithGuardRevoked(address indexed user);
@@ -129,6 +129,15 @@ contract WraithHook is IHooks {
     /// @notice User's secure vault address for Quantum Exit settlement
     mapping(address => address) public userVaults;
 
+    /// @notice User-specific toxicity thresholds for alerts/exits
+    mapping(address => uint256) public userThresholds;
+
+    /// @notice User-preferred rescue tokens (e.g. USDC, ETH)
+    mapping(address => address) public userRescueTokens;
+
+    /// @notice User preference for auto-exit vs manual alert
+    mapping(address => bool) public userAutoExit;
+
     /// @notice Last sovereign override block per user per pool
     mapping(PoolId => mapping(address => uint256)) public lastSovereignOverride;
 
@@ -138,6 +147,8 @@ contract WraithHook is IHooks {
     // ══════════════════════════════════════════════════════════════
     //                         MODIFIERS
     // ══════════════════════════════════════════════════════════════
+    
+    // ... (rest of the file)
 
     modifier onlyPoolManager() {
         if (msg.sender != address(poolManager)) revert OnlyPoolManager();
@@ -412,18 +423,22 @@ contract WraithHook is IHooks {
     ) external onlySentinel {
         PoolId poolId = key.toId();
 
-        // Validate toxic state
+        // Validate custom or protocol threshold
+        uint256 threshold = userThresholds[user];
+        if (threshold == 0) threshold = TOXICITY_THRESHOLD;
+
         uint256 tScore = toxicityScores[poolId];
-        if (tScore < TOXICITY_THRESHOLD) revert PoolToxic();
+        if (tScore < threshold) revert PoolToxic();
 
         // Validate user
         if (!isWraithGuard[user]) revert NotWraithGuardUser();
         if (userVaults[user] == address(0)) revert QuantumExitFailed();
 
-        // Emit event — actual execution happens via KeeperHub bundle
-        // The Keeper will call PoolManager.modifyLiquidity to remove,
-        // then swap via Universal Router to safe asset, then deposit to vault.
-        emit QuantumExitTriggered(poolId, user, 0, 0);
+        // Check if user has auto-exit enabled
+        if (!userAutoExit[user]) revert PoolToxic(); // Cannot trigger if manual only
+
+        // Emit event with rescue token preference for Keeper execution
+        emit QuantumExitTriggered(poolId, user, userRescueTokens[user], 0, 0);
     }
 
     // ══════════════════════════════════════════════════════════════
@@ -453,12 +468,24 @@ contract WraithHook is IHooks {
     // ══════════════════════════════════════════════════════════════
 
     /// @notice Register as a Wraith-Guard protected user
-    /// @param vault The secure vault address for Quantum Exit settlement
-    function registerWraithGuard(address vault) external {
+    /// @param vault       The secure vault address for Quantum Exit settlement
+    /// @param threshold   Custom toxicity threshold (e.g. 8500 = 85%)
+    /// @param rescueToken The token address to receive after swap (e.g. USDC)
+    /// @param autoExit    True for auto-exit via Keeper, false for manual alert
+    function registerWraithGuard(
+        address vault, 
+        uint256 threshold, 
+        address rescueToken, 
+        bool autoExit
+    ) external {
         if (isWraithGuard[msg.sender]) revert AlreadyRegistered();
+        if (threshold > TOXICITY_PRECISION) revert InvalidToxicityScore();
 
         isWraithGuard[msg.sender] = true;
         userVaults[msg.sender] = vault;
+        userThresholds[msg.sender] = threshold;
+        userRescueTokens[msg.sender] = rescueToken;
+        userAutoExit[msg.sender] = autoExit;
 
         emit WraithGuardRegistered(msg.sender);
         emit VaultUpdated(msg.sender, vault);
@@ -596,5 +623,23 @@ contract WraithHook is IHooks {
         assembly {
             armed := tload(slot)
         }
+    }
+
+    /// @notice Atomic rescue execution for Keeper Hub
+    /// @param key The pool key
+    /// @param user The user to rescue
+    function executeQuantumRescue(
+        PoolKey calldata key,
+        address user
+    ) external onlySentinel {
+        PoolId poolId = key.toId();
+        
+        // 1. Final Safety Check
+        uint256 threshold = userThresholds[user];
+        if (threshold == 0) threshold = TOXICITY_THRESHOLD;
+        if (toxicityScores[poolId] < threshold) revert PoolToxic();
+        
+        // 2. Perform Extraction logic (Emit signal for settlement)
+        emit QuantumExitTriggered(poolId, user, userRescueTokens[user], 0, 0);
     }
 }
