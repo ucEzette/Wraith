@@ -6,17 +6,11 @@ import {
   getDefaultConfig,
   darkTheme,
 } from '@rainbow-me/rainbowkit';
-import { wagmiAdapter } from './config';
+import { wagmiAdapter as config } from './config';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { WagmiProvider } from 'wagmi';
-import { mainnet, sepolia, foundry } from 'wagmi/chains';
 
-const config = getDefaultConfig({
-  appName: 'Wraith Protocol',
-  projectId: 'YOUR_PROJECT_ID',
-  chains: [mainnet, sepolia, foundry],
-  ssr: true,
-});
+import { Toaster } from 'react-hot-toast';
 
 const queryClient = new QueryClient();
 
@@ -30,6 +24,18 @@ export function Providers({ children }: { children: React.ReactNode }) {
           borderRadius: 'small',
         })}>
           {children}
+          <Toaster 
+            position="bottom-right"
+            toastOptions={{
+              style: {
+                background: '#0f131f',
+                color: '#00f0ff',
+                border: '1px solid rgba(0,240,255,0.2)',
+                fontSize: '12px',
+                fontFamily: 'monospace'
+              }
+            }}
+          />
         </RainbowKitProvider>
       </QueryClientProvider>
     </WagmiProvider>
