@@ -63,13 +63,13 @@ const CONFIG = {
 const WRAITH_HOOK_ABI = [
   "event ToxicityUpdated(bytes32 indexed poolId, uint256 score, bytes32 proofHash)",
   "event PoisonHookActivated(bytes32 indexed poolId, address indexed attacker, uint24 poisonFee)",
-  "event QuantumExitTriggered(bytes32 indexed poolId, address indexed user, uint256 amount0, uint256 amount1)",
+  "event QuantumExitTriggered(bytes32 indexed poolId, address indexed user, address rescueToken, uint256 amount0, uint256 amount1)",
   "event SovereignOverride(bytes32 indexed poolId, address indexed user)",
   "function toxicityScores(bytes32) view returns (uint256)",
   "function isWraithGuard(address) view returns (bool)",
   "function userVaults(address) view returns (address)",
   "function maliceProofs(bytes32) view returns (bytes32)",
-  "function getDefenseStatus(tuple(address,address,uint24,int24,address)) view returns (uint256,bool,bool,bytes32)",
+  "function executeQuantumRescue(tuple(address,address,uint24,int24,address) key, address user) external",
 ];
 
 const POOL_MANAGER_ABI = [

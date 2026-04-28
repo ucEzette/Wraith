@@ -42,10 +42,8 @@ export default function SentinelPage() {
             </div>
 <div className="hidden md:flex items-center gap-md h-full">
 <Link className="text-slate-400 hover:text-cyan-200 pb-1 hover:bg-cyan-400/10 hover:shadow-[0_0_15px_rgba(0,240,255,0.3)] transition-all duration-300" href="/">Dashboard</Link>
-<Link className="text-slate-400 hover:text-cyan-200 pb-1 hover:bg-cyan-400/10 hover:shadow-[0_0_15px_rgba(0,240,255,0.3)] transition-all duration-300" href="/pool/pepe-eth">Pools</Link>
 <Link className="text-slate-400 hover:text-cyan-200 pb-1 hover:bg-cyan-400/10 hover:shadow-[0_0_15px_rgba(0,240,255,0.3)] transition-all duration-300" href="/protect">Protection</Link>
 <Link className="text-cyan-400 border-b border-cyan-400 pb-1 transition-all" href="/sentinel">Sentinel</Link>
-<Link className="text-slate-400 hover:text-cyan-200 pb-1 hover:bg-cyan-400/10 hover:shadow-[0_0_15px_rgba(0,240,255,0.3)] transition-all duration-300" href="/admin">Admin</Link>
 </div>
 </div>
 <div className="flex items-center gap-md">
@@ -57,7 +55,7 @@ export default function SentinelPage() {
 <span className="material-symbols-outlined" style={{'fontVariationSettings': "'FILL' 0"}}>terminal</span>
 </button>
 </div>
-<div className="text-slate-400">Mainnet</div>
+<div className="text-slate-400">Unichain Sepolia</div>
 <ConnectButton />
 </div>
 </nav>
