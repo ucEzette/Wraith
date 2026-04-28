@@ -76,4 +76,4 @@ A: Wraith is a decentralized mesh. As long as at least one Sentinel/Keeper pair 
 
 ---
 
-*Protecting the future of DeFi with Verifiable AI.* 🛡️✨
+*Protecting the future of DeFi with Verifiable AI.* 
