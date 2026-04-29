@@ -14,6 +14,8 @@ export default function DashboardPage() {
   const { address } = useAccount(); // Need to import useAccount too
 
   const [targetPoolId, setTargetPoolId] = useState('');
+  const [newPoolId, setNewPoolId] = useState('');
+  const [resolvedName, setResolvedName] = useState('');
   const [monitoredPools, setMonitoredPools] = useState<any[]>([]);
   const [poolData, setPoolData] = useState<Record<string, { toxicity: number, isArmed: boolean }>>({});
 
@@ -38,29 +40,28 @@ export default function DashboardPage() {
     }
   });
 
-  const [liveEvents, setLiveEvents] = useState<any[]>([]);  const [stats, setStats] = useState({
+  const [liveEvents, setLiveEvents] = useState<any[]>([]);
+  const [stats, setStats] = useState({
     attacksBlocked: 0,
     valueRescued: 0,
     activeGuards: 0,
     currentBlock: 0n
   });
-  const [newPoolId, setNewPoolId] = useState('');
 
   const publicClient = usePublicClient();
 
   const getRegistryName = (id: string) => {
     const registry: Record<string, string> = {
-      '0x004ec958ef1254278e301a8c94957cb747cedd35f3f3ab6d3aa9f2680e9ff26e': 'QPHAN / ECHO',
-      '0x5002e25409158869ed3c0010620434c21e7b2fb4c13f5e077b2f3ab5ba2aa3c8': 'ETH / ECHO',
-      '0x15d8a5d49c21096c7f8eb66b01e287b1ec308f4510ae8b263a0da76b408f095d': 'ECHO / QPHAN',
-      '0x7515fdadafd1f8154c328b5832264fde3e9d25289920bfaadc0f4661d81adafd': 'ETH / eiETH',
-      '0xdd466e67e58989e504c8651a24d27e1d5838d6438676239f8f2d579298495570': 'WETH / USDC',
-      '0x0807170f20ae860695435c8c2ed46372de256e90e9b8db53f3b2375b85fa1388': 'ETH / USDC',
-      '0x80956c7c21b4a8b281df77e3387a5e44c28e7f511bdcf63a6c842ffac38c8d02': 'WETH / USDC',
-      '0x20ef1dcde5ebc0a2ce3e50121a52a2d0ce9cd6dd92be210cbe2e056a2c58c7f1': 'QPHAN / USDC',
-      '0xc2c10312da5665125a69b871e14c7142393aea2d2e95271c6fdc80da03309ac1': 'ECHO / USDC',
-      '0xc6a377bf949aa602715015f0709b83e309db9708ec755562761899e90097f480': 'cbBTC / ETH',
-      '0xddf252adc685f09623067272186536098679f523b3efd49248443586a1170940': 'DAI / ETH'
+      // Latest deployment (WraithHook 0x98ECfF0fFd41075d9508887d2D60bfec9cf68280)
+      '0xec7214589df0342938b8d963c67104b2c286d9a0d84318c4600d81084b647898': 'ETH / USDC',
+      '0x60f065a3d76e33d026ef647610f607a5f6e80b621e2f072eb0f1715694204d16': 'QPHAN / USDC',
+      '0x1927392e626e2a22285df6a9456209e90098df24f6f8748d504543503b0c268f': 'ECHO / USDC',
+      '0x614828551405c102c77d9c6614f17730d1d680621e2f072eb0f1715694204d16': 'WRAITH / USDC',
+      // Previous deployment pool IDs (backwards compatibility)
+      '0xcba31b79dc597efa8a114343b3037e0b16049da5a730935d0947edff778bcdb7': 'ETH / USDC',
+      '0x53b0eb00b65b950eaf7fd791e95893f6e31e4e39a3e916343cb96d8d4de70051': 'QPHAN / USDC',
+      '0x1fb1a61d36a90104708d68b32e8e2064188b2a71c58a398cd3f78972ba6d5666': 'ECHO / USDC',
+      '0xf5a9eab82678a42ab5182e555e812fcf138ff83687a2ae36e56a4c694d9b79b9': 'WRAITH / USDC',
     };
     return registry[id.toLowerCase()];
   };
@@ -86,11 +87,12 @@ export default function DashboardPage() {
     if (regName) return regName;
 
     try {
+      const currentBlock = await publicClient?.getBlockNumber();
       const logs = await publicClient?.getLogs({
         address: POOL_MANAGER_ADDRESS as `0x${string}`,
         event: parseAbiItem('event Initialize(bytes32 indexed id, address indexed currency0, address indexed currency1, uint24 fee, int24 tickSpacing, address hooks, uint160 sqrtPriceX96, int24 tick)'),
         args: { id: id as `0x${string}` },
-        fromBlock: 'earliest'
+        fromBlock: currentBlock ? (currentBlock > 9999n ? currentBlock - 9999n : 0n) : 0n
       });
 
       if (logs && logs.length > 0) {
@@ -120,6 +122,18 @@ export default function DashboardPage() {
     return 'UNKNOWN POOL';
   };
 
+  useEffect(() => {
+    const fetchName = async () => {
+      if (newPoolId.length === 66) {
+        const name = await resolvePoolOnChain(newPoolId);
+        setResolvedName(name);
+      } else {
+        setResolvedName('');
+      }
+    };
+    fetchName();
+  }, [newPoolId]);
+
   const handleAddPool = async (id: string) => {
     if (!id || id.length !== 66) return;
     const key = getStorageKey();
@@ -129,7 +143,7 @@ export default function DashboardPage() {
       try { currentPools = JSON.parse(savedPoolsJson); } catch (e) {}
     }
     
-    const pair = await resolvePoolOnChain(id);
+    const pair = resolvedName || await resolvePoolOnChain(id);
     const existingIndex = currentPools.findIndex(p => (typeof p === 'string' ? p === id : p.id === id));
     
     if (existingIndex === -1) {
@@ -143,6 +157,7 @@ export default function DashboardPage() {
     setTargetPoolId(id);
     localStorage.setItem('wraith_focused_pool', id);
     setNewPoolId('');
+    setResolvedName('');
     syncAll();
   };
 
@@ -174,13 +189,13 @@ export default function DashboardPage() {
       const toxicityLogs = await publicClient.getLogs({
         address: WRAITH_HOOK_ADDRESS as `0x${string}`,
         event: parseAbiItem('event ToxicityUpdated(bytes32 indexed poolId, uint256 score, bytes32 proofHash)'),
-        fromBlock: currentBlock - 1000n
+        fromBlock: currentBlock > 500n ? currentBlock - 500n : 0n
       });
 
       const exitLogs = await publicClient.getLogs({
         address: WRAITH_HOOK_ADDRESS as `0x${string}`,
         event: parseAbiItem('event QuantumExitTriggered(bytes32 indexed poolId, address indexed user, address rescueToken, uint256 amount0, uint256 amount1)'),
-        fromBlock: currentBlock - 1000n
+        fromBlock: currentBlock > 500n ? currentBlock - 500n : 0n
       });
 
       setStats({
@@ -297,13 +312,13 @@ export default function DashboardPage() {
         const toxicityLogs = await publicClient.getLogs({
           address: WRAITH_HOOK_ADDRESS as `0x${string}`,
           event: parseAbiItem('event ToxicityUpdated(bytes32 indexed poolId, uint256 score, bytes32 proofHash)'),
-          fromBlock: currentBlock - 1000n
+          fromBlock: currentBlock > 500n ? currentBlock - 500n : 0n
         });
 
         const exitLogs = await publicClient.getLogs({
           address: WRAITH_HOOK_ADDRESS as `0x${string}`,
           event: parseAbiItem('event QuantumExitTriggered(bytes32 indexed poolId, address indexed user, address rescueToken, uint256 amount0, uint256 amount1)'),
-          fromBlock: currentBlock - 1000n
+          fromBlock: currentBlock > 500n ? currentBlock - 500n : 0n
         });
 
         setStats({
@@ -344,7 +359,7 @@ export default function DashboardPage() {
           address: WRAITH_HOOK_ADDRESS as `0x${string}`,
           event: parseAbiItem('event WraithGuardRegistered(address indexed user, bytes32 indexed poolId, address vault)'),
           args: { user: address },
-          fromBlock: 0n // Scans full history for the connected user
+          fromBlock: currentBlock > 500n ? currentBlock - 500n : 0n
         });
 
         const registeredPoolIds = registrationLogs.map(l => l.args.poolId as string);
@@ -385,50 +400,47 @@ export default function DashboardPage() {
         
         if (changed) {
           localStorage.setItem(sKey, JSON.stringify(currentPools));
-          setMonitoredPools(currentPools);
         }
-      } catch (e) {
-        console.error("Fetch error:", e);
-      }
-    };
+        
+        const mappedPools = await Promise.all(currentPools.map(async p => {
+          const id = typeof p === 'string' ? p : p.id;
+          const pair = typeof p === 'object' && p.pair ? p.pair : await resolvePoolOnChain(id);
+          return { id, pair };
+        }));
+        setMonitoredPools(mappedPools);
 
         // Fetch live data for all pools
         const newData: Record<string, { toxicity: number, isArmed: boolean }> = {};
-        for (const id of currentPools) {
+        for (const pool of currentPools) {
+          const poolId = typeof pool === 'string' ? pool : pool.id;
           try {
             const [score, armed] = await Promise.all([
               publicClient.readContract({
                 ...wraithHookConfig,
                 functionName: 'toxicityScores',
-                args: [id as `0x${string}`]
+                args: [poolId as `0x${string}`]
               }),
               publicClient.readContract({
                 ...wraithHookConfig,
                 functionName: 'isArmedPool',
-                args: [id as `0x${string}`]
+                args: [poolId as `0x${string}`]
               })
             ]);
-            newData[id] = { 
+            newData[poolId] = { 
               toxicity: Number(score as bigint) / 100, 
               isArmed: armed as boolean 
             };
           } catch (e) {
-            console.error(`Failed to fetch data for pool ${id}`, e);
+            console.error(`Failed to fetch data for pool ${poolId}`, e);
           }
         }
         setPoolData(newData);
-
-        setMonitoredPools(currentPools.map(id => ({
-          id,
-          pair: id === '0x004ec958ef1254278e301a8c94957cb747cedd35f3f3ab6d3aa9f2680e9ff26e' ? 'QPHAN / ECHO' : 
-                id === '0x5002e25409158869ed3c0010620434c21e7b2fb4c13f5e077b2f3ab5ba2aa3c8' ? 'ETH / ECHO' :
-                'UNKNOWN POOL',
-          tvl: '$--'
-        })));
-      } catch (err) {
-        console.error("Event fetch failed:", err);
+      } catch (e) {
+        console.error("Fetch error:", e);
       }
     };
+
+    fetchEvents();
 
     syncAll();
     const interval = setInterval(syncAll, 10000);
@@ -560,20 +572,28 @@ export default function DashboardPage() {
                 <span className="material-symbols-outlined text-primary-container">radar</span>
                 Active Pool Monitors
               </h3>
-              <div className="flex items-center gap-sm">
-                <input 
-                  type="text" 
-                  placeholder="Pool ID (bytes32)"
-                  value={newPoolId}
-                  onChange={(e) => setNewPoolId(e.target.value)}
-                  className="bg-surface-container-highest/50 border border-white/10 rounded px-3 py-1 text-[10px] font-mono text-on-surface focus:border-primary-container outline-none w-64"
-                />
-                <button 
-                  onClick={() => handleAddPool(newPoolId)}
-                  className="bg-primary-container text-on-primary-container px-3 py-1 rounded text-[10px] font-bold uppercase tracking-widest hover:bg-primary-container/80 transition-colors"
-                >
-                  Add
-                </button>
+              <div className="flex flex-col gap-xs">
+                <div className="flex items-center gap-sm">
+                  <input 
+                    type="text" 
+                    placeholder="Pool ID (bytes32)"
+                    value={newPoolId}
+                    onChange={(e) => setNewPoolId(e.target.value)}
+                    className="bg-surface-container-highest/50 border border-white/10 rounded px-3 py-1 text-[10px] font-mono text-on-surface focus:border-primary-container outline-none w-64"
+                  />
+                  <button 
+                    onClick={() => handleAddPool(newPoolId)}
+                    className="bg-primary-container text-on-primary-container px-3 py-1 rounded text-[10px] font-bold uppercase tracking-widest hover:bg-primary-container/80 transition-colors"
+                  >
+                    Add
+                  </button>
+                </div>
+                {resolvedName && (
+                  <div className="text-[10px] text-primary-container animate-pulse flex items-center gap-xs ml-1">
+                    <span className="material-symbols-outlined text-[12px]">check_circle</span>
+                    Detected: {resolvedName}
+                  </div>
+                )}
               </div>
             </div>
 

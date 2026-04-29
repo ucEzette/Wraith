@@ -67,6 +67,7 @@ contract WraithHook is IHooks {
     event VaultUpdated(address indexed user, address indexed vault);
     event PoolArmed(PoolId indexed poolId);
     event PoolDisarmed(PoolId indexed poolId);
+    event WraithPoolRegistered(PoolId indexed poolId, string pairName);
 
     // ══════════════════════════════════════════════════════════════
     //                          CONSTANTS
@@ -513,10 +514,12 @@ contract WraithHook is IHooks {
 
     /// @notice Arm a pool for Wraith monitoring
     /// @param key The pool key
-    function armPool(PoolKey calldata key) external onlyGuardian {
+    /// @param pairName Human readable name (e.g. ETH / USDC)
+    function armPool(PoolKey calldata key, string calldata pairName) external onlyGuardian {
         PoolId poolId = key.toId();
         isArmedPool[poolId] = true;
         emit PoolArmed(poolId);
+        emit WraithPoolRegistered(poolId, pairName);
     }
 
     /// @notice Disarm a pool (remove from Wraith monitoring)
