@@ -719,18 +719,60 @@ class SentinelAgent:
 async def main():
     agent = SentinelAgent()
 
-    # Monitor the WRAITH test token (contains selfdestruct)
+    # 1. Monitor ETH / USDC
     agent.add_monitored_pool(
-        pool_id="0x0000000000000000000000000000000000000000000000000000000000000001", # Virtual ID for test
+        pool_id="0xcba31b79dc597efa8a114343b3037e0b16049da5a730935d0947edff778bcdb7",
         pool_key={
-            "currency0": "0x4200000000000000000000000000000000000006", # WETH
+            "currency0": "0x31d0220469e10c4E71834a79b1f276d740d3768F", # USDC
+            "currency1": "0x4200000000000000000000000000000000000006", # WETH
+            "fee": 3000,
+            "tickSpacing": 60,
+            "hooks": WRAITH_HOOK_ADDRESS,
+        },
+        token_address="0x4200000000000000000000000000000000000006",
+        dev_address="0x0000000000000000000000000000000000000000", 
+    )
+
+    # 2. Monitor QPHAN / USDC
+    agent.add_monitored_pool(
+        pool_id="0x53b0eb00b65b950eaf7fd791e95893f6e31e4e39a3e916343cb96d8d4de70051",
+        pool_key={
+            "currency0": "0x31d0220469e10c4E71834a79b1f276d740d3768F", # USDC
+            "currency1": "0x9d803a3066c858d714c4f5ee286eaa6249d451ab", # QPHAN
+            "fee": 3000,
+            "tickSpacing": 60,
+            "hooks": WRAITH_HOOK_ADDRESS,
+        },
+        token_address="0x9d803a3066c858d714c4f5ee286eaa6249d451ab",
+        dev_address="0x68faebf19fa57658d37bf885f5377f735fe97d70",
+    )
+
+    # 3. Monitor ECHO / USDC
+    agent.add_monitored_pool(
+        pool_id="0x1fb1a61d36a90104708d68b32e8e2064188b2a71c58a398cd3f78972ba6d5666",
+        pool_key={
+            "currency0": "0x31d0220469e10c4E71834a79b1f276d740d3768F", # USDC
+            "currency1": "0x6586035d5e39e30bf37445451b43eeaeeaa1405a", # ECHO
+            "fee": 3000,
+            "tickSpacing": 60,
+            "hooks": WRAITH_HOOK_ADDRESS,
+        },
+        token_address="0x6586035d5e39e30bf37445451b43eeaeeaa1405a",
+        dev_address="0x68faebf19fa57658d37bf885f5377f735fe97d70",
+    )
+
+    # 4. Monitor WRAITH / USDC
+    agent.add_monitored_pool(
+        pool_id="0xf5a9eab82678a42ab5182e555e812fcf138ff83687a2ae36e56a4c694d9b79b9",
+        pool_key={
+            "currency0": "0x31d0220469e10c4E71834a79b1f276d740d3768F", # USDC
             "currency1": "0x9dA26648257a17bEB42d9464663b7b9Ce1c4f174", # WRAITH
             "fee": 3000,
             "tickSpacing": 60,
             "hooks": WRAITH_HOOK_ADDRESS,
         },
-        token_address="0x9dA26648257a17bEB42d9464663b7b9Ce1c4f174", # WRAITH
-        dev_address="0x68faebf19fa57658d37bf885f5377f735fe97d70", # Authorized Dev (You)
+        token_address="0x9dA26648257a17bEB42d9464663b7b9Ce1c4f174",
+        dev_address="0x68faebf19fa57658d37bf885f5377f735fe97d70",
     )
 
     await agent.run()
