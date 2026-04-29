@@ -67,11 +67,17 @@ export default function ProtectPage() {
       '0x15d8a5d49c21096c7f8eb66b01e287b1ec308f4510ae8b263a0da76b408f095d': 'ECHO / QPHAN',
       '0x7515fdadafd1f8154c328b5832264fde3e9d25289920bfaadc0f4661d81adafd': 'ETH / eiETH',
       '0xdd466e67e58989e504c8651a24d27e1d5838d6438676239f8f2d579298495570': 'WETH / USDC',
+      '0x0807170f20ae860695435c8c2ed46372de256e90e9b8db53f3b2375b85fa1388': 'ETH / USDC',
+      '0x80956c7c21b4a8b281df77e3387a5e44c28e7f511bdcf63a6c842ffac38c8d02': 'WETH / USDC',
+      '0x20ef1dcde5ebc0a2ce3e50121a52a2d0ce9cd6dd92be210cbe2e056a2c58c7f1': 'QPHAN / USDC',
+      '0xc2c10312da5665125a69b871e14c7142393aea2d2e95271c6fdc80da03309ac1': 'ECHO / USDC',
       '0xc6a377bf949aa602715015f0709b83e309db9708ec755562761899e90097f480': 'cbBTC / ETH',
       '0xddf252adc685f09623067272186536098679f523b3efd49248443586a1170940': 'DAI / ETH'
     };
     return registry[id.toLowerCase()] || 'UNKNOWN POOL';
   };
+
+  const getStorageKey = () => address ? `wraith_monitored_pools_${address.toLowerCase()}` : 'wraith_monitored_pools_global';
 
   const getPoolIcon = (pair: string) => {
     if (pair.includes('QPHAN')) return 'water_drop';
@@ -130,7 +136,8 @@ export default function ProtectPage() {
     });
 
     // Update persistent list
-    const savedPoolsJson = localStorage.getItem('wraith_monitored_pools');
+    const key = getStorageKey();
+    const savedPoolsJson = localStorage.getItem(key);
     let pools: any[] = [];
     if (savedPoolsJson) {
       try {
@@ -145,26 +152,96 @@ export default function ProtectPage() {
     } else {
       pools[existingIndex] = { id, pair };
     }
-    localStorage.setItem('wraith_monitored_pools', JSON.stringify(pools));
+    localStorage.setItem(key, JSON.stringify(pools));
     
     // Refresh monitored pools list in state
     setMonitoredPools(pools.map(p => typeof p === 'string' ? { id: p, pair: getPairName(p) } : p));
   };
 
+  const syncState = async () => {
+    if (!address || !publicClient) return;
+    try {
+      const currentBlock = await publicClient.getBlockNumber();
+      const logs = await publicClient.getLogs({
+        address: WRAITH_HOOK_ADDRESS as `0x${string}`,
+        event: parseAbiItem('event QuantumExitTriggered(bytes32 indexed poolId, address indexed user, address rescueToken, uint256 amount0, uint256 amount1)'),
+        args: { user: address },
+        fromBlock: currentBlock - 10000n > 0n ? currentBlock - 10000n : 0n
+      });
+
+      const formatted = await Promise.all(logs.map(async (l: any) => {
+        const pair = getPairName(l.args.poolId);
+        return {
+          id: l.args.poolId,
+          pair,
+          token: 'USDC',
+          amount: (Number(l.args.amount0 || 0n) + Number(l.args.amount1 || 0n)) / 1e18,
+          status: 'RESCUED',
+          time: 'RECENT',
+          txHash: l.transactionHash
+        };
+      }));
+      setRealHistory(formatted);
+
+      const regLogs = await publicClient.getLogs({
+        address: WRAITH_HOOK_ADDRESS as `0x${string}`,
+        event: parseAbiItem('event WraithGuardRegistered(address indexed user, bytes32 indexed poolId, address vault)'),
+        args: { user: address },
+        fromBlock: 0n
+      });
+
+      const registeredIds = regLogs.map(l => l.args.poolId as string);
+      const key = getStorageKey();
+      const saved = localStorage.getItem(key);
+      let pools: any[] = [];
+      if (saved) try { pools = JSON.parse(saved); } catch (e) {}
+
+      let updated = false;
+      for (const rid of registeredIds) {
+        if (!pools.some(p => (typeof p === 'string' ? p === rid : p.id === rid))) {
+             const pair = getPairName(rid);
+             pools.push({ id: rid, pair });
+             updated = true;
+        }
+      }
+      if (updated) {
+        localStorage.setItem(key, JSON.stringify(pools));
+        setMonitoredPools(pools);
+      }
+    } catch (err) {
+      console.error("Sync error:", err);
+    }
+  };
+
   useEffect(() => {
-    const savedPoolsJson = localStorage.getItem('wraith_monitored_pools');
+    // MIGRATION
+    if (address) {
+      const globalKey = 'wraith_monitored_pools';
+      const addressKey = getStorageKey();
+      const globalSaved = localStorage.getItem(globalKey);
+      const addressSaved = localStorage.getItem(addressKey);
+
+      if (globalSaved && !addressSaved) {
+        localStorage.setItem(addressKey, globalSaved);
+        localStorage.removeItem(globalKey);
+      }
+    }
+
+    const key = getStorageKey();
+    const savedPoolsJson = localStorage.getItem(key);
     if (savedPoolsJson) {
       try {
         const pools = JSON.parse(savedPoolsJson);
-        setMonitoredPools(pools.map((p: any) => {
+        const mapped = pools.map((p: any) => {
           if (typeof p === 'string') {
             return { id: p, pair: getPairName(p) };
           }
           return p;
-        }));
+        });
+        setMonitoredPools(mapped);
         
         const focused = localStorage.getItem('wraith_focused_pool');
-        if (focused && pools.includes(focused)) {
+        if (focused && pools.some((p: any) => typeof p === 'string' ? p === focused : p.id === focused)) {
           setTargetPoolId(focused);
           const pair = getPairName(focused);
           setResolvedPool({ id: focused, pair: pair, icon: getPoolIcon(pair) });
@@ -174,36 +251,8 @@ export default function ProtectPage() {
 
     if (!address || !publicClient) return;
 
-    const fetchHistory = async () => {
-      setIsHistoryLoading(true);
-      try {
-        const currentBlock = await publicClient.getBlockNumber();
-        const logs = await publicClient.getLogs({
-          address: WRAITH_HOOK_ADDRESS as `0x${string}`,
-          event: parseAbiItem('event QuantumExitTriggered(bytes32 indexed poolId, address indexed user, address rescueToken, uint256 amount0, uint256 amount1)'),
-          args: { user: address as `0x${string}` },
-          fromBlock: currentBlock - 5000n 
-        });
-
-        const formatted = logs.map((log, index) => ({
-          id: index,
-          pair: 'NATIVE / ASSET', // In a real app, we'd resolve poolId to pairs
-          amount: 'RESCUED', 
-          date: 'RECENT',
-          hash: log.transactionHash
-        })).reverse();
-
-        setRealHistory(formatted);
-      } catch (err) {
-        console.error("Failed to fetch history:", err);
-      } finally {
-        setIsHistoryLoading(false);
-      }
-    };
-
-    fetchHistory();
-    // Poll for new events every 15s
-    const interval = setInterval(fetchHistory, 15000);
+    syncState();
+    const interval = setInterval(syncState, 15000);
     return () => clearInterval(interval);
   }, [address, publicClient]);
 
@@ -221,7 +270,10 @@ export default function ProtectPage() {
       ],
     });
 
-    toast.promise(registrationPromise, {
+    toast.promise(registrationPromise.then((tx) => {
+      setTimeout(syncState, 2000);
+      return tx;
+    }), {
       loading: 'Activating Wraith-Guard...',
       success: () => {
         setNewVault('');

@@ -227,7 +227,7 @@ class ToxicityModel:
         """
         Compute final toxicity score using bitwise-reproducible REE logic.
         """
-        from agents.toxicity_model_ree import calculate_toxicity
+        from toxicity_model_ree import calculate_toxicity
         
         # Prepare inputs for REE
         mempool_data = {
@@ -719,19 +719,19 @@ class SentinelAgent:
 async def main():
     agent = SentinelAgent()
 
-    # Example: monitor a pool (configure via env or API in production)
-    # agent.add_monitored_pool(
-    #     pool_id="0xabc...123",
-    #     pool_key={
-    #         "currency0": "0x...",
-    #         "currency1": "0x...",
-    #         "fee": 0x800000,
-    #         "tickSpacing": 60,
-    #         "hooks": WRAITH_HOOK_ADDRESS,
-    #     },
-    #     token_address="0x...",
-    #     dev_address="0x...",
-    # )
+    # Monitor the WRAITH test token (contains selfdestruct)
+    agent.add_monitored_pool(
+        pool_id="0x0000000000000000000000000000000000000000000000000000000000000001", # Virtual ID for test
+        pool_key={
+            "currency0": "0x4200000000000000000000000000000000000006", # WETH
+            "currency1": "0x9dA26648257a17bEB42d9464663b7b9Ce1c4f174", # WRAITH
+            "fee": 3000,
+            "tickSpacing": 60,
+            "hooks": WRAITH_HOOK_ADDRESS,
+        },
+        token_address="0x9dA26648257a17bEB42d9464663b7b9Ce1c4f174", # WRAITH
+        dev_address="0x68faebf19fa57658d37bf885f5377f735fe97d70", # Authorized Dev (You)
+    )
 
     await agent.run()
 
