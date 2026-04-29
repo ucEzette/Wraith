@@ -52,16 +52,30 @@ async function main() {
   // For the purpose of this manual script, let's define a helper to resolve common ones.
   
   const REGISTRY = {
-    "0x004ec958ef1254278e301a8c94957cb747cedd35f3f3ab6d3aa9f2680e9ff26e": {
-        currency0: "0x7856b3e404b341f2a33f545308678f2378901234", // QPHAN (example)
-        currency1: "0x8901234567890123456789012345678901234567", // ECHO (example)
+    "0xec7214589df0342938b8d963c67104b2c286d9a0d84318c4600d81084b647898": {
+        currency0: "0x31d0220469e10c4E71834a79b1f276d740d3768F", // USDC
+        currency1: "0x4200000000000000000000000000000000000006", // WETH
         fee: 3000,
         tickSpacing: 60,
         hooks: hookAddress
     },
-    "0x7515fdadafd1f8154c328b5832264fde3e9d25289920bfaadc0f4661d81adafd": {
-        currency0: "0x4200000000000000000000000000000000000006", // WETH
-        currency1: "0x256B798b3fD8A133A89f365319889f365319889f", // USDC
+    "0x60f065a3d76e33d026ef647610f607a5f6e80b621e2f072eb0f1715694204d16": {
+        currency0: "0x31d0220469e10c4E71834a79b1f276d740d3768F", // USDC
+        currency1: "0x9d803A3066C858d714c4F5eE286eaa6249d451aB", // QPHAN
+        fee: 3000,
+        tickSpacing: 60,
+        hooks: hookAddress
+    },
+    "0x1927392e626e2a22285df6a9456209e90098df24f6f8748d504543503b0c268f": {
+        currency0: "0x31d0220469e10c4E71834a79b1f276d740d3768F", // USDC
+        currency1: "0x6586035D5e39e30bf37445451b43EEaEeAa1405a", // ECHO
+        fee: 3000,
+        tickSpacing: 60,
+        hooks: hookAddress
+    },
+    "0x614828551405c102c77d9c6614f17730d1d680621e2f072eb0f1715694204d16": {
+        currency0: "0x31d0220469e10c4E71834a79b1f276d740d3768F", // USDC
+        currency1: "0x9dA26648257a17bEB42d9464663b7b9Ce1c4f174", // WRAITH
         fee: 3000,
         tickSpacing: 60,
         hooks: hookAddress
