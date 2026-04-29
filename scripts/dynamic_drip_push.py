@@ -51,8 +51,10 @@ def get_commit_message(files):
     # Clean file names for message
     names = [os.path.basename(f) for f in files]
     
+    if all(f.endswith(".md") for f in files):
+        return f"docs: update documentation: {', '.join(names)}"
     if any("sentinel" in f or "toxicity" in f for f in files):
-        return f"feat(agents): update sentinel monitoring and toxicity logic"
+        return f"feat(agents): update sentinel monitoring and toxicity logic ({', '.join(names)})"
     if all(f.startswith("contracts/") for f in files):
         return f"feat(contracts): update core protocol contracts: {', '.join(names)}"
     if all(f.startswith("frontend/") for f in files):

@@ -32,8 +32,8 @@ const CONFIG = {
 
   // Safe assets
   safeAssets: {
-    USDC: process.env.USDC_ADDRESS || "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-    WETH: process.env.WETH_ADDRESS || "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+    USDC: process.env.USDC_ADDRESS || "0x31d0220469e10c4E71834a79b1f276d740d3768F",
+    WETH: process.env.WETH_ADDRESS || "0x4200000000000000000000000000000000000006",
   },
 
   // KeeperHub
