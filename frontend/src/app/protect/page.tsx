@@ -60,19 +60,41 @@ export default function ProtectPage() {
       refetchInterval: 5000
     }
   });
+  const getTokenSymbol = async (tokenAddress: string) => {
+    if (!tokenAddress || tokenAddress === '0x0000000000000000000000000000000000000000') return 'ETH';
+    try {
+      const symbol = await publicClient?.readContract({
+        address: tokenAddress as `0x${string}`,
+        abi: erc20Abi,
+        functionName: 'symbol',
+      });
+      return symbol as string;
+    } catch (e) {
+      return tokenAddress.slice(0, 6);
+    }
+  };
+
   const getPairName = (id: string) => {
     const registry: Record<string, string> = {
+      // Latest deployment (WraithHook 0x98ECfF0fFd41075d9508887d2D60bfec9cf68280)
+      '0xec7214589df0342938b8d963c67104b2c286d9a0d84318c4600d81084b647898': 'ETH / USDC',
+      '0x60f065a3d76e33d026ef647610f607a5f6e80b621e2f072eb0f1715694204d16': 'QPHAN / USDC',
+      '0x1927392e626e2a22285df6a9456209e90098df24f6f8748d504543503b0c268f': 'ECHO / USDC',
+      '0x614828551405c102c77d9c6614f17730d1d680621e2f072eb0f1715694204d16': 'WRAITH / USDC',
+      // Previous deployment pool IDs (kept for backwards compatibility)
+      '0xcba31b79dc597efa8a114343b3037e0b16049da5a730935d0947edff778bcdb7': 'ETH / USDC',
+      '0x53b0eb00b65b950eaf7fd791e95893f6e31e4e39a3e916343cb96d8d4de70051': 'QPHAN / USDC',
+      '0x1fb1a61d36a90104708d68b32e8e2064188b2a71c58a398cd3f78972ba6d5666': 'ECHO / USDC',
+      '0xf5a9eab82678a42ab5182e555e812fcf138ff83687a2ae36e56a4c694d9b79b9': 'WRAITH / USDC',
+      // Legacy pool IDs
       '0x004ec958ef1254278e301a8c94957cb747cedd35f3f3ab6d3aa9f2680e9ff26e': 'QPHAN / ECHO',
       '0x5002e25409158869ed3c0010620434c21e7b2fb4c13f5e077b2f3ab5ba2aa3c8': 'ETH / ECHO',
-      '0x15d8a5d49c21096c7f8eb66b01e287b1ec308f4510ae8b263a0da76b408f095d': 'ECHO / QPHAN',
       '0x7515fdadafd1f8154c328b5832264fde3e9d25289920bfaadc0f4661d81adafd': 'ETH / eiETH',
       '0xdd466e67e58989e504c8651a24d27e1d5838d6438676239f8f2d579298495570': 'WETH / USDC',
       '0x0807170f20ae860695435c8c2ed46372de256e90e9b8db53f3b2375b85fa1388': 'ETH / USDC',
       '0x80956c7c21b4a8b281df77e3387a5e44c28e7f511bdcf63a6c842ffac38c8d02': 'WETH / USDC',
       '0x20ef1dcde5ebc0a2ce3e50121a52a2d0ce9cd6dd92be210cbe2e056a2c58c7f1': 'QPHAN / USDC',
       '0xc2c10312da5665125a69b871e14c7142393aea2d2e95271c6fdc80da03309ac1': 'ECHO / USDC',
-      '0xc6a377bf949aa602715015f0709b83e309db9708ec755562761899e90097f480': 'cbBTC / ETH',
-      '0xddf252adc685f09623067272186536098679f523b3efd49248443586a1170940': 'DAI / ETH'
     };
     return registry[id.toLowerCase()] || 'UNKNOWN POOL';
   };
@@ -100,23 +122,13 @@ export default function ProtectPage() {
     if (pair === 'UNKNOWN POOL') {
       setResolvedPool({ id, pair: 'SYNCING...', icon: 'sync' });
       try {
-        let logs;
-        try {
-          logs = await publicClient?.getLogs({
-            address: POOL_MANAGER_ADDRESS as `0x${string}`,
-            event: parseAbiItem('event Initialize(bytes32 indexed id, address indexed currency0, address indexed currency1, uint24 fee, int24 tickSpacing, address hooks, uint160 sqrtPriceX96, int24 tick)'),
-            args: { id: id as `0x${string}` },
-            fromBlock: 'earliest'
-          });
-        } catch (e) {
-          const currentBlock = await publicClient?.getBlockNumber();
-          logs = await publicClient?.getLogs({
-            address: POOL_MANAGER_ADDRESS as `0x${string}`,
-            event: parseAbiItem('event Initialize(bytes32 indexed id, address indexed currency0, address indexed currency1, uint24 fee, int24 tickSpacing, address hooks, uint160 sqrtPriceX96, int24 tick)'),
-            args: { id: id as `0x${string}` },
-            fromBlock: currentBlock ? (currentBlock - 9999n > 0n ? currentBlock - 9999n : 0n) : 0n
-          });
-        }
+        const currentBlock = await publicClient?.getBlockNumber();
+        const logs = await publicClient?.getLogs({
+          address: POOL_MANAGER_ADDRESS as `0x${string}`,
+          event: parseAbiItem('event Initialize(bytes32 indexed id, address indexed currency0, address indexed currency1, uint24 fee, int24 tickSpacing, address hooks, uint160 sqrtPriceX96, int24 tick)'),
+          args: { id: id as `0x${string}` },
+          fromBlock: currentBlock ? (currentBlock > 9999n ? currentBlock - 9999n : 0n) : 0n
+        });
 
         if (logs && logs.length > 0) {
           const { currency0, currency1 } = logs[0].args;
@@ -166,7 +178,7 @@ export default function ProtectPage() {
         address: WRAITH_HOOK_ADDRESS as `0x${string}`,
         event: parseAbiItem('event QuantumExitTriggered(bytes32 indexed poolId, address indexed user, address rescueToken, uint256 amount0, uint256 amount1)'),
         args: { user: address },
-        fromBlock: currentBlock - 10000n > 0n ? currentBlock - 10000n : 0n
+        fromBlock: currentBlock > 500n ? currentBlock - 500n : 0n
       });
 
       const formatted = await Promise.all(logs.map(async (l: any) => {
@@ -187,7 +199,7 @@ export default function ProtectPage() {
         address: WRAITH_HOOK_ADDRESS as `0x${string}`,
         event: parseAbiItem('event WraithGuardRegistered(address indexed user, bytes32 indexed poolId, address vault)'),
         args: { user: address },
-        fromBlock: 0n
+        fromBlock: currentBlock > 500n ? currentBlock - 500n : 0n
       });
 
       const registeredIds = regLogs.map(l => l.args.poolId as string);
