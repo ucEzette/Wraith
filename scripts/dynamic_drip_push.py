@@ -59,6 +59,8 @@ def get_commit_message(files):
         return f"feat(contracts): update core protocol contracts: {', '.join(names)}"
     if all(f.startswith("frontend/") for f in files):
         return f"feat(frontend): UI enhancements for {', '.join(names)}"
+    if all(f.startswith("test/") for f in files):
+        return f"test: update test suite: {', '.join(names)}"
     if all(f.startswith("scripts/") or f.startswith("script/") for f in files):
         return f"chore(scripts): update automation utilities: {', '.join(names)}"
     
