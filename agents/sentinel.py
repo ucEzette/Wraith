@@ -767,7 +767,7 @@ async def main():
 
     # 1. Monitor ETH / USDC
     agent.add_monitored_pool(
-        pool_id="0xcba31b79dc597efa8a114343b3037e0b16049da5a730935d0947edff778bcdb7",
+        pool_id="0x7a207acaddeb221078ce37512f88e050c2bceecc95f5e7ae7527830b8e0e5734",
         pool_key={
             "currency0": "0x31d0220469e10c4E71834a79b1f276d740d3768F", # USDC
             "currency1": "0x4200000000000000000000000000000000000006", # WETH
@@ -781,7 +781,7 @@ async def main():
 
     # 2. Monitor QPHAN / USDC
     agent.add_monitored_pool(
-        pool_id="0x53b0eb00b65b950eaf7fd791e95893f6e31e4e39a3e916343cb96d8d4de70051",
+        pool_id="0xa869e4cae78878d6a85917f3e3556c307c18c8e6d1112d04625f16ff77655b2f",
         pool_key={
             "currency0": "0x31d0220469e10c4E71834a79b1f276d740d3768F", # USDC
             "currency1": "0x9d803a3066c858d714c4f5ee286eaa6249d451ab", # QPHAN
@@ -795,7 +795,7 @@ async def main():
 
     # 3. Monitor ECHO / USDC
     agent.add_monitored_pool(
-        pool_id="0x1fb1a61d36a90104708d68b32e8e2064188b2a71c58a398cd3f78972ba6d5666",
+        pool_id="0xafd44b0172fc530c071d599a1832e335e9e4444eb03cdbe6e10b7c584e383a45",
         pool_key={
             "currency0": "0x31d0220469e10c4E71834a79b1f276d740d3768F", # USDC
             "currency1": "0x6586035d5e39e30bf37445451b43eeaeeaa1405a", # ECHO
@@ -809,7 +809,7 @@ async def main():
 
     # 4. Monitor WRAITH / USDC
     agent.add_monitored_pool(
-        pool_id="0xf5a9eab82678a42ab5182e555e812fcf138ff83687a2ae36e56a4c694d9b79b9",
+        pool_id="0xbf4bf38f15e9235195e7fe78f4f789a6f5cbd1625fc7e47d5485bfd0f44aeee2",
         pool_key={
             "currency0": "0x31d0220469e10c4E71834a79b1f276d740d3768F", # USDC
             "currency1": "0x9dA26648257a17bEB42d9464663b7b9Ce1c4f174", # WRAITH
