@@ -16,6 +16,9 @@
 import { ethers } from "ethers";
 import fs from "fs";
 import path from "path";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 // ══════════════════════════════════════════════════════════════
 //                      CONFIGURATION
@@ -326,42 +329,54 @@ class WraithEventListener {
   }
 
   async start() {
-    console.log("[Listener] Subscribing to WraithHook events...");
+    console.log("[Listener] Starting manual event polling for WraithHook...");
+    console.log(`  Target: ${this.contract.target}`);
 
-    // ToxicityUpdated
-    this.contract.on("ToxicityUpdated", async (poolId, score, proofHash, event) => {
-      console.log(`\n🔴 TOXICITY UPDATED`);
-      console.log(`  Pool: ${poolId}`);
-      console.log(`  Score: ${score.toString()} / 10000`);
-      console.log(`  Proof: ${proofHash}`);
+    let lastBlock = await this.provider.getBlockNumber();
+    console.log(`  Starting from block: ${lastBlock}`);
 
-      const handler = this.handlers.get("ToxicityUpdated");
-      if (handler) await handler({ poolId, score, proofHash, event });
-    });
+    const poll = async () => {
+      try {
+        const currentBlock = await this.provider.getBlockNumber();
+        if (currentBlock > lastBlock) {
+          // console.log(`[Listener] Polling blocks ${lastBlock + 1} to ${currentBlock}...`);
+          
+          // ToxicityUpdated
+          const toxicityLogs = await this.contract.queryFilter(
+            this.contract.filters.ToxicityUpdated(),
+            lastBlock + 1,
+            currentBlock
+          );
+          for (const log of toxicityLogs) {
+            const { poolId, score, proofHash } = log.args;
+            console.log(`\n🔴 [POLL] TOXICITY UPDATED in block ${log.blockNumber}`);
+            const handler = this.handlers.get("ToxicityUpdated");
+            if (handler) await handler({ poolId, score, proofHash, event: log });
+          }
 
-    // PoisonHookActivated
-    this.contract.on("PoisonHookActivated", async (poolId, attacker, poisonFee, event) => {
-      console.log(`\n☠️  POISON HOOK ACTIVATED`);
-      console.log(`  Pool: ${poolId}`);
-      console.log(`  Attacker: ${attacker}`);
-      console.log(`  Fee: ${poisonFee} (99%)`);
+          // QuantumExitTriggered
+          const exitLogs = await this.contract.queryFilter(
+            this.contract.filters.QuantumExitTriggered(),
+            lastBlock + 1,
+            currentBlock
+          );
+          for (const log of exitLogs) {
+            const { poolId, user, rescueToken, amount0, amount1 } = log.args;
+            console.log(`\n⚡ [POLL] QUANTUM EXIT TRIGGERED in block ${log.blockNumber}`);
+            const handler = this.handlers.get("QuantumExitTriggered");
+            if (handler) await handler({ poolId, user, rescueToken, amount0, amount1, event: log });
+          }
 
-      const handler = this.handlers.get("PoisonHookActivated");
-      if (handler) await handler({ poolId, attacker, poisonFee, event });
-    });
+          lastBlock = currentBlock;
+        }
+      } catch (error) {
+        console.error(`[Listener] Poll error: ${error.message}`);
+      }
+      setTimeout(poll, 2000); // Poll every 2 seconds
+    };
 
-    // QuantumExitTriggered
-    this.contract.on("QuantumExitTriggered", async (poolId, user, rescueToken, amount0, amount1, event) => {
-      console.log(`\n⚡ QUANTUM EXIT TRIGGERED`);
-      console.log(`  Pool: ${poolId}`);
-      console.log(`  User: ${user}`);
-      console.log(`  Rescue Token: ${rescueToken}`);
-
-      const handler = this.handlers.get("QuantumExitTriggered");
-      if (handler) await handler({ poolId, user, rescueToken, amount0, amount1, event });
-    });
-
-    console.log("[Listener] Subscribed to all WraithHook events");
+    poll();
+    console.log("[Listener] Polling loop active ✓");
   }
 
   async stop() {
@@ -391,15 +406,13 @@ class KeeperRelay {
     console.log("║   WRAITH KEEPER RELAY — STARTING     ║");
     console.log("╚══════════════════════════════════════╝\n");
 
-    // Connect to node
-    if (CONFIG.wsUrl) {
-      this.provider = new ethers.WebSocketProvider(CONFIG.wsUrl);
-    } else {
-      this.provider = new ethers.JsonRpcProvider(CONFIG.rpcUrl);
-    }
+    // Connect to node - Force JsonRpcProvider for stability with manual polling
+    this.provider = new ethers.JsonRpcProvider(CONFIG.rpcUrl);
 
     const network = await this.provider.getNetwork();
     console.log(`[Init] Connected to chain: ${network.chainId}`);
+    console.log(`[Init] Hook Address: ${CONFIG.wraithHook}`);
+    console.log(`[Init] Manager Address: ${CONFIG.poolManager}`);
 
     // Setup wallet
     if (CONFIG.keeperPrivateKey) {

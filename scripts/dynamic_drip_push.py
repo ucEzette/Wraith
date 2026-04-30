@@ -51,6 +51,8 @@ def get_commit_message(files):
     # Clean file names for message
     names = [os.path.basename(f) for f in files]
     
+    if any("Dockerfile" in f or f == "docker-compose.yml" for f in files):
+        return f"chore(docker): update containerization config: {', '.join(names)}"
     if all(f.endswith(".md") for f in files):
         return f"docs: update documentation: {', '.join(names)}"
     if any("sentinel" in f or "toxicity" in f for f in files):
