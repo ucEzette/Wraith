@@ -51,6 +51,7 @@ contract WraithHook is IHooks {
     error CooldownActive();
     error AlreadyRegistered();
     error NotRegistered();
+    error OperatorNotApproved();
 
     // ══════════════════════════════════════════════════════════════
     //                           EVENTS
@@ -407,14 +408,11 @@ contract WraithHook is IHooks {
     // ══════════════════════════════════════════════════════════════
 
     /// @notice Execute a "Quantum Exit" — atomically rescue LP funds
-    /// @dev Called by the KeeperHub relay. Removes liquidity from the toxic pool
-    ///      on behalf of Wraith-Guard users. The actual swap-to-safe-asset and
-    ///      vault deposit is handled by the KeeperHub Flash-Rescue bundle.
-    ///
-    ///      This function only validates the exit conditions:
-    ///      1. Pool must be in toxic state
-    ///      2. User must be Wraith-Guard registered
-    ///      3. User must have a vault configured
+    /// @dev Called by the Sentinel. Validates:
+    ///      1. Pool toxicity exceeds the user's threshold
+    ///      2. User is Wraith-Guard registered with autoExit enabled
+    ///      3. User has granted operator permission on PoolManager
+    ///      4. User has a vault configured
     ///
     /// @param key  The pool key
     /// @param user The LP user to rescue
@@ -437,6 +435,11 @@ contract WraithHook is IHooks {
 
         // Check if user has auto-exit enabled
         if (!userAutoExit[user]) revert PoolToxic(); // Cannot trigger if manual only
+
+        // CRITICAL: Validate that user has granted operator permission
+        // Without this, the Keeper cannot remove liquidity on the user's behalf.
+        // Users must call PoolManager.setOperator(wraith_hook, true) before enabling auto-exit.
+        if (!poolManager.isOperator(user, address(this))) revert OperatorNotApproved();
 
         // Emit event with rescue token preference for Keeper execution
         emit QuantumExitTriggered(poolId, user, userRescueTokens[user], 0, 0);
@@ -468,6 +471,10 @@ contract WraithHook is IHooks {
     //                    USER REGISTRATION
     // ══════════════════════════════════════════════════════════════
 
+    // Track all registered users for Sentinel lookup
+    address[] public allWraithGuardUsers;
+    mapping(address => uint256) private userListIndex;
+
     /// @notice Register as a Wraith-Guard protected user
     /// @param vault       The secure vault address for Quantum Exit settlement
     /// @param threshold   Custom toxicity threshold (e.g. 8500 = 85%)
@@ -488,21 +495,30 @@ contract WraithHook is IHooks {
         userRescueTokens[msg.sender] = rescueToken;
         userAutoExit[msg.sender] = autoExit;
 
+        // Add to global list
+        userListIndex[msg.sender] = allWraithGuardUsers.length;
+        allWraithGuardUsers.push(msg.sender);
+
         emit WraithGuardRegistered(msg.sender);
         emit VaultUpdated(msg.sender, vault);
     }
 
-    /// @notice Update vault address
-    /// @param vault The new vault address
-    function updateVault(address vault) external {
-        if (!isWraithGuard[msg.sender]) revert NotRegistered();
-        userVaults[msg.sender] = vault;
-        emit VaultUpdated(msg.sender, vault);
+    /// @notice Get all registered Wraith-Guard users
+    function getWraithGuardUsers() external view returns (address[] memory) {
+        return allWraithGuardUsers;
     }
 
     /// @notice Revoke Wraith-Guard registration
     function revokeWraithGuard() external {
         if (!isWraithGuard[msg.sender]) revert NotRegistered();
+        
+        // Remove from list (swap and pop)
+        uint256 index = userListIndex[msg.sender];
+        address lastUser = allWraithGuardUsers[allWraithGuardUsers.length - 1];
+        allWraithGuardUsers[index] = lastUser;
+        userListIndex[lastUser] = index;
+        allWraithGuardUsers.pop();
+
         isWraithGuard[msg.sender] = false;
         userVaults[msg.sender] = address(0);
         emit WraithGuardRevoked(msg.sender);
