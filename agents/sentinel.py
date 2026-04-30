@@ -467,6 +467,20 @@ class WraithRelay:
             "outputs": [],
             "stateMutability": "nonpayable",
             "type": "function"
+        },
+        {
+            "inputs": [],
+            "name": "getWraithGuardUsers",
+            "outputs": [{"name": "", "type": "address[]"}],
+            "stateMutability": "view",
+            "type": "function"
+        },
+        {
+            "inputs": [{"name": "", "type": "address"}],
+            "name": "userAutoExit",
+            "outputs": [{"name": "", "type": "bool"}],
+            "stateMutability": "view",
+            "type": "function"
         }
     ]""")
 
@@ -483,33 +497,55 @@ class WraithRelay:
         self, pool_key: dict, score: int, proof_hash: bytes, attackers: list[str]
     ):
         """Send updateToxicity transaction to WraithHook."""
-        tx = await self.contract.functions.updateToxicity(
-            pool_key, score, proof_hash, attackers
-        ).build_transaction({
-            "from": self.account.address,
-            "nonce": await self.w3.eth.get_transaction_count(self.account.address),
-            "gas": 500_000,
-            "chainId": CHAIN_ID,
-        })
-        signed = self.account.sign_transaction(tx)
-        tx_hash = await self.w3.eth.send_raw_transaction(signed.raw_transaction)
-        logger.info(f"Toxicity update tx: {tx_hash.hex()}")
-        return tx_hash
+        try:
+            tx = await self.contract.functions.updateToxicity(
+                pool_key, score, proof_hash, attackers
+            ).build_transaction({
+                "from": self.account.address,
+                "nonce": await self.w3.eth.get_transaction_count(self.account.address),
+                "gas": 500_000,
+                "chainId": CHAIN_ID,
+            })
+            signed = self.account.sign_transaction(tx)
+            tx_hash = await self.w3.eth.send_raw_transaction(signed.raw_transaction)
+            logger.info(f"Toxicity update tx: {tx_hash.hex()}")
+            return tx_hash
+        except Exception as e:
+            logger.error(f"Failed to update toxicity: {e}")
+            return None
 
     async def trigger_quantum_exit(self, pool_key: dict, user: str):
         """Send triggerQuantumExit transaction to WraithHook."""
-        tx = await self.contract.functions.triggerQuantumExit(
-            pool_key, user
-        ).build_transaction({
-            "from": self.account.address,
-            "nonce": await self.w3.eth.get_transaction_count(self.account.address),
-            "gas": 300_000,
-            "chainId": CHAIN_ID,
-        })
-        signed = self.account.sign_transaction(tx)
-        tx_hash = await self.w3.eth.send_raw_transaction(signed.raw_transaction)
-        logger.info(f"Quantum Exit tx: {tx_hash.hex()}")
-        return tx_hash
+        try:
+            tx = await self.contract.functions.triggerQuantumExit(
+                pool_key, user
+            ).build_transaction({
+                "from": self.account.address,
+                "nonce": await self.w3.eth.get_transaction_count(self.account.address),
+                "gas": 300_000,
+                "chainId": CHAIN_ID,
+            })
+            signed = self.account.sign_transaction(tx)
+            tx_hash = await self.w3.eth.send_raw_transaction(signed.raw_transaction)
+            logger.info(f"🚀 Quantum Exit Triggered for user {user[:10]}...: {tx_hash.hex()}")
+            return tx_hash
+        except Exception as e:
+            logger.error(f"Failed to trigger Quantum Exit for {user}: {e}")
+            return None
+
+    async def get_auto_exit_users(self) -> list[str]:
+        """Fetch all users who have auto-exit enabled."""
+        try:
+            users = await self.contract.functions.getWraithGuardUsers().call()
+            auto_exit_users = []
+            for user in users:
+                is_enabled = await self.contract.functions.userAutoExit(user).call()
+                if is_enabled:
+                    auto_exit_users.append(user)
+            return auto_exit_users
+        except Exception as e:
+            logger.error(f"Failed to fetch auto-exit users: {e}")
+            return []
 
 
 # ══════════════════════════════════════════════════════════════
@@ -676,6 +712,16 @@ class SentinelAgent:
                     proof_hash=proof_hash,
                     attackers=report.flagged_addresses,
                 )
+
+                # 2. Automatically trigger Quantum Exits for users with Auto-Exit enabled
+                logger.info(f"[Sentinel] Checking for Quantum Auto-Exit users...")
+                auto_users = await self.relay.get_auto_exit_users()
+                if auto_users:
+                    logger.info(f"[Sentinel] Found {len(auto_users)} users for auto-exit. Triggering...")
+                    for user in auto_users:
+                        await self.relay.trigger_quantum_exit(pool_info["pool_key"], user)
+                else:
+                    logger.info("[Sentinel] No auto-exit users found for this pool.")
         else:
             level = report.threat_level.value
             logger.info(

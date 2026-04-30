@@ -79,7 +79,7 @@ To evaluate the **Wraith Protocol** active defense mechanisms, judges can follow
 Ensure your `.env` has the following variables:
 ```bash
 UNICHAIN_RPC_URL=https://sepolia.unichain.org
-WRAITH_HOOK_ADDRESS=0x98ECfF0fFd41075d9508887d2D60bfec9cf68280
+WRAITH_HOOK_ADDRESS=0xD56388a4ce5Cd9E236201AD3DF27Edfbb28E0280
 PRIVATE_KEY=<YOUR_PRIVATE_KEY>
 ```
 
@@ -88,13 +88,19 @@ Judges can manually flag a pool as "Toxic" to trigger the protocol's defense sta
 
 *Example: Flag the WRAITH/USDC pool as critical (95.00%):*
 ```bash
-# Usage: node scripts/manual_toxicity.js <POOL_ID> <SCORE>
-node scripts/manual_toxicity.js 0x614828551405c102c77d9c6614f17730d1d680621e2f072eb0f1715694204d16 9500
+# Usage: node scripts/manual_toxicity.cjs <POOL_ID> <SCORE>
+node scripts/manual_toxicity.cjs 0xbf4bf38f15e9235195e7fe78f4f789a6f5cbd1625fc7e47d5485bfd0f44aeee2 9500
 ```
 
-#### 3. Observe the "Poison Fee"
+#### 3. Clear/Reset Toxicity
+To return a pool to a "Safe" state, use the `clear` command:
+```bash
+node scripts/manual_toxicity.cjs 0xbf4bf38f15e9235195e7fe78f4f789a6f5cbd1625fc7e47d5485bfd0f44aeee2 clear
+```
+
+#### 4. Observe the "Poison Fee"
 1. Open the **Wraith Dashboard** at `http://localhost:3000`.
-2. Input the Pool ID: `0x614828551405c102c77d9c6614f17730d1d680621e2f072eb0f1715694204d16`.
+2. Input the Pool ID: `0xbf4bf38f15e9235195e7fe78f4f789a6f5cbd1625fc7e47d5485bfd0f44aeee2`.
 3. You will see the **Toxicity Meter** spike to 95% and the **DEFENSE ARMED** status turn green.
 4. Any swap attempt from a non-registered address will now be subject to the **99.9% Poison Fee** override.
 
