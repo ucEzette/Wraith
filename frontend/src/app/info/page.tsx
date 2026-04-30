@@ -18,7 +18,11 @@ export default function HowItWorks() {
             <nav className="hidden md:flex gap-md font-sans tracking-widest uppercase text-xs font-bold">
               <Link className="text-slate-400 hover:text-cyan-200 transition-all" href="/">Dashboard</Link>
               <Link className="text-slate-400 hover:text-cyan-200 transition-all" href="/protect">Protection</Link>
-              <Link className="text-cyan-400 border-b border-cyan-400 pb-1" href="/info">How it Works</Link>
+              <Link className="text-slate-400 hover:text-cyan-200 transition-all" href="/sentinel">Sentinel</Link>
+              <Link className="text-cyan-400 border-b border-cyan-400 pb-1 flex items-center gap-1" href="/info">
+                <span className="material-symbols-outlined text-[16px]">help</span>
+                How it Works
+              </Link>
             </nav>
           </div>
           <ConnectButton />

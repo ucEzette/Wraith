@@ -3,6 +3,7 @@
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import Link from "next/link";
 import { useAccount } from "wagmi";
+import { toast } from "react-hot-toast";
 
 import { useReadContract, usePublicClient, useWriteContract } from "wagmi";
 import { useState, useEffect } from "react";
@@ -286,6 +287,8 @@ export default function DashboardPage() {
           : p,
       ),
     );
+
+    toast.success("Monitor Removed Successfully");
 
     if (targetPoolId === id) {
       const nextId =
@@ -628,6 +631,13 @@ export default function DashboardPage() {
               href="/sentinel"
             >
               Sentinel
+            </Link>
+            <Link
+              className="text-slate-400 hover:text-cyan-200 pb-1 hover:bg-cyan-400/10 hover:shadow-[0_0_15px_rgba(0,240,255,0.3)] transition-all duration-300 flex items-center gap-1"
+              href="/info"
+            >
+              <span className="material-symbols-outlined text-[16px]">help</span>
+              How it Works
             </Link>
           </div>
         </div>
