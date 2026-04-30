@@ -480,47 +480,59 @@ class KeeperRelay {
       const { poolId, score } = data;
       const tScore = Number(score);
       
+      console.log(`[Relay] Processing ToxicityUpdated: Pool=${poolId}, Score=${tScore}`);
+      
       if (tScore >= 8500) {
-        console.log(`[Alert] Critical toxicity detected! Score: ${tScore / 100}%`);
-        
-        // Prevent double-processing same toxicity update
-        const toxicityKey = `${poolId}-${tScore}`;
-        if (this.processedToxicity.has(toxicityKey)) return;
-        this.processedToxicity.add(toxicityKey);
-
-        console.log(`[Proactive] Triggering Quantum Exits for all protected users...`);
+        console.log(`[Relay] 🚨 CRITICAL TOXICITY (>=85%): ${tScore / 100}%`);
         
         try {
-          const hookContract = new ethers.Contract(
-            CONFIG.wraithHook,
-            WRAITH_HOOK_ABI,
-            this.wallet // Use wallet to send transactions
-          );
-
-          // 1. Resolve PoolKey from Registry
-          const poolKey = POOL_REGISTRY[poolId.toLowerCase()];
-          if (!poolKey) {
-            console.error(`[Proactive] PoolId ${poolId} not found in registry. Cannot trigger exits.`);
+          if (!this.wallet) {
+            console.error("[Relay] Keeper wallet not initialized. Check PRIVATE_KEY.");
             return;
           }
 
+          const hookContract = new ethers.Contract(
+            CONFIG.wraithHook,
+            WRAITH_HOOK_ABI,
+            this.wallet
+          );
+
+          // 1. Resolve PoolKey from Registry
+          const pid = poolId.toLowerCase();
+          const poolKey = POOL_REGISTRY[pid];
+          
+          if (!poolKey) {
+            console.error(`[Relay] PoolId ${pid} NOT FOUND in registry. Available keys: ${Object.keys(POOL_REGISTRY).join(", ")}`);
+            return;
+          }
+
+          console.log(`[Relay] Resolved PoolKey for ${pid}. Fetching users...`);
+
           // 2. Fetch all registered users
           const users = await hookContract.getWraithGuardUsers();
-          console.log(`[Proactive] Found ${users.length} registered users.`);
+          console.log(`[Relay] Found ${users.length} registered users on-chain.`);
 
           // 3. Trigger exits for users who opted in
           for (const user of users) {
             const autoExit = await hookContract.userAutoExit(user);
+            console.log(`[Relay] User ${user}: AutoExit=${autoExit}`);
+            
             if (autoExit) {
-              console.log(`[Proactive] Triggering exit for user: ${user}`);
-              const tx = await hookContract.triggerQuantumExit(poolKey, user, { gasLimit: 300000 });
-              console.log(`[Proactive] Tx Sent: ${tx.hash}`);
-              // We don't wait for wait() here to avoid blocking other users
+              console.log(`[Relay] ⚡ TRIGGERING QUANTUM EXIT for ${user}...`);
+              const tx = await hookContract.triggerQuantumExit(poolKey, user, { gasLimit: 500000 });
+              console.log(`[Relay] Transaction Sent! Hash: ${tx.hash}`);
+              
+              // Optional: wait for confirmation to ensure it emitted the Triggered event
+              // const receipt = await tx.wait();
+              // console.log(`[Relay] Trigger confirmed in block ${receipt.blockNumber}`);
             }
           }
         } catch (error) {
-          console.error(`[Proactive] Failed to trigger exits: ${error.message}`);
+          console.error(`[Relay] Error in proactive trigger loop: ${error.message}`);
+          console.error(error.stack);
         }
+      } else {
+        console.log(`[Relay] Toxicity below threshold (${tScore}). No action taken.`);
       }
     });
 
