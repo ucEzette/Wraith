@@ -15,7 +15,7 @@ contract DeployWraith is Script {
         address guardian = deployer;
 
         // Salt found via MineSalt for 0x280 suffix
-        bytes32 salt = bytes32(uint256(24311));
+        bytes32 salt = bytes32(uint256(7787));
         
         vm.startBroadcast(deployerPrivateKey);
 
