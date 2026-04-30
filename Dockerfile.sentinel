@@ -1,0 +1,22 @@
+FROM python:3.13-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements or setup files
+# Since there's no requirements.txt, we'll install common deps
+RUN pip install --no-cache-dir \
+    web3 \
+    numpy \
+    eth-abi \
+    requests
+
+# Copy agent code
+COPY agents/ ./agents/
+
+# Start the sentinel
+CMD ["python", "agents/sentinel.py"]
