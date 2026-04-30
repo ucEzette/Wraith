@@ -53,23 +53,21 @@ The Wraith system is a decentralized "Agent Guard" architecture composed of four
 
 ---
 
-## 🚀 Production Deployment (Gensyn + AXL Mesh)
+## 🚀 Production Deployment
 
-Wraith Protocol is now fully optimized for decentralized **Agent Guard** execution.
+Wraith Protocol is production-ready with a hybrid hosting model. For detailed instructions, see the **[Full Deployment Guide](DEPLOYMENT_GUIDE.md)**.
 
-#### 1. Node Initialization
-Identity files and production API keys are securely stored in the `./node` directory:
-- `userApiKey.json`: Production Gensyn AEL credentials.
-- `swarm.pem`: Node identity for mesh authentication.
-
-#### 2. Start Infrastructure
+### Using Docker (Recommended)
 ```bash
-# 1. Start the Sentinel (Gensyn Toxicity Monitor)
-python3 agents/sentinel.py
-
-# 2. Start the Keeper Relay (Flash-Rescue Execution)
-node scripts/keeper_relay.js
+cp .env.example .env
+# Fill in your keys in .env
+docker-compose up -d --build
 ```
+
+### Agent Components
+- **[Gensyn Sentinel Agent](agents/sentinel.py)**: Real-time on-chain toxicity monitor.
+- **[Keeper Relay Agent](scripts/keeper_relay.js)**: Atomic Flash-Rescue execution engine.
+- **[Frontend Dashboard](frontend/)**: Next.js interface for user management (Deploy via Vercel).
 
 ### ⚖️ Judging & Simulation Guide
 

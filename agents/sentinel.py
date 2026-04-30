@@ -14,6 +14,9 @@ import time
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional
+from dotenv import load_dotenv
+
+load_dotenv()
 
 import numpy as np
 from eth_abi import encode
