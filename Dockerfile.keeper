@@ -1,0 +1,16 @@
+FROM node:20-slim
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+COPY scripts/ ./scripts/
+
+# Install dependencies
+RUN npm install --production
+
+# Ensure scripts are executable
+RUN chmod +x scripts/keeper_relay.js
+
+# Start the relay
+CMD ["node", "scripts/keeper_relay.js"]
