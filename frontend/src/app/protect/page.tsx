@@ -209,6 +209,24 @@ export default function ProtectPage() {
     try { await p; } catch (e) {}
   };
 
+  const handleRemoveMonitor = (id: string) => {
+    const key = getStorageKey();
+    const saved = JSON.parse(localStorage.getItem(key) || "[]");
+    const updated = saved.filter((p: any) => (typeof p === "string" ? p !== id : p.id !== id));
+    localStorage.setItem(key, JSON.stringify(updated));
+    
+    // Track hidden pools
+    const hiddenKey = "wraith_hidden_pools";
+    const hidden = JSON.parse(localStorage.getItem(hiddenKey) || "[]");
+    if (!hidden.includes(id)) {
+      hidden.push(id);
+      localStorage.setItem(hiddenKey, JSON.stringify(hidden));
+    }
+    
+    setMonitoredPools(updated.map((p: any) => (typeof p === "string" ? { id: p, pair: getPairName(p) } : p)));
+    toast.success("Monitor Removed");
+  };
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-50 font-sans">
       <div className="scanlines"></div>
@@ -218,6 +236,10 @@ export default function ProtectPage() {
           <nav className="flex gap-6 font-bold uppercase text-xs tracking-widest">
             <Link className="text-slate-400 hover:text-cyan-400" href="/">Dashboard</Link>
             <Link className="text-cyan-400 border-b border-cyan-400 pb-1" href="/protect">Protection</Link>
+            <Link className="text-slate-400 hover:text-cyan-400 flex items-center gap-1" href="/info">
+              <span className="material-symbols-outlined text-[16px]">help</span>
+              How it Works
+            </Link>
           </nav>
         </div>
         <ConnectButton />
@@ -243,7 +265,17 @@ export default function ProtectPage() {
           </div>
 
           <div className="bg-slate-950/40 p-4 rounded-xl border border-white/5">
-            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-2">RESCUE VAULT</label>
+            <div className="flex justify-between items-center mb-2">
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block">RESCUE VAULT</label>
+              {address && (
+                <button 
+                  onClick={() => setNewVault(address)}
+                  className="text-[9px] text-cyan-400 hover:text-cyan-200 uppercase font-bold tracking-tighter"
+                >
+                  USE CONNECTED WALLET
+                </button>
+              )}
+            </div>
             <input className="bg-transparent border-none outline-none font-mono text-xs w-full" type="text" placeholder="0x..." value={newVault} onChange={(e) => setNewVault(e.target.value)} />
           </div>
 
@@ -253,7 +285,40 @@ export default function ProtectPage() {
             {resolvedPool && <div className="mt-2 text-cyan-400 text-[10px] font-bold uppercase">DETECTED: {resolvedPool.pair}</div>}
           </div>
 
-          <button onClick={handleRegister} disabled={isTxPending || !newVault || (autoExitEnabled && !isOperatorApproved)} className="w-full bg-cyan-500 text-slate-950 font-bold py-4 rounded-xl hover:shadow-[0_0_20px_rgba(6,182,212,0.5)] transition-all disabled:opacity-50 uppercase text-xs tracking-widest">
+          <div className="bg-slate-900/60 p-5 rounded-xl border border-cyan-500/10 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isOperatorApproved ? "bg-cyan-500/20 text-cyan-400" : "bg-slate-800 text-slate-500"}`}>
+                <span className="material-symbols-outlined text-[18px]">{isOperatorApproved ? "verified" : "lock"}</span>
+              </div>
+              <div>
+                <h3 className="text-[10px] font-bold uppercase tracking-widest">Protocol Authorization</h3>
+                <p className="text-[9px] text-slate-500">Enable Wraith Protocol to act on your behalf during a rescue event.</p>
+              </div>
+            </div>
+            {!isOperatorApproved && (
+              <button 
+                onClick={async () => {
+                  try {
+                    const atx = await writeContractAsync({ ...poolManagerConfig, functionName: "setOperator", args: [WRAITH_HOOK_ADDRESS as `0x${string}`, true] } as any);
+                    if (publicClient) await publicClient.waitForTransactionReceipt({ hash: atx });
+                    setIsOperatorApproved(true);
+                    toast.success("Protocol Authorized");
+                  } catch (e: any) { toast.error("Authorization failed."); }
+                }}
+                className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-[10px] font-bold uppercase tracking-widest rounded-lg border border-white/5 transition-colors"
+              >
+                Sign Permit & Authorize
+              </button>
+            )}
+            {isOperatorApproved && (
+              <div className="text-[9px] text-cyan-400 font-bold flex items-center gap-1">
+                <span className="material-symbols-outlined text-[14px]">check_circle</span>
+                PERMISSION GRANTED // PROTOCOL ACTIVE
+              </div>
+            )}
+          </div>
+
+          <button onClick={handleRegister} disabled={isTxPending || !newVault} className="w-full bg-cyan-500 text-slate-950 font-bold py-4 rounded-xl hover:shadow-[0_0_20px_rgba(6,182,212,0.5)] transition-all disabled:opacity-50 uppercase text-xs tracking-widest">
             {isProtected ? "UPDATE PROTECTION" : "ACTIVATE PROTECTION"}
           </button>
           {isProtected && <button onClick={handleRevoke} className="w-full bg-red-500/10 text-red-500 font-bold py-3 rounded-xl border border-red-500/20 text-[10px] uppercase tracking-widest">REVOKE GUARD</button>}
@@ -263,13 +328,21 @@ export default function ProtectPage() {
           <div className="bg-slate-900/40 border border-white/5 rounded-2xl overflow-hidden backdrop-blur-xl">
             <div className="p-6 border-b border-white/10 text-[10px] font-bold tracking-widest uppercase">ACTIVE MONITORS</div>
             <table className="w-full text-left">
-              <thead><tr className="bg-white/5 text-[9px] text-slate-500 uppercase tracking-widest"><th className="p-4">PAIR</th><th className="p-4">ID</th><th className="p-4">STATUS</th></tr></thead>
+              <thead><tr className="bg-white/5 text-[9px] text-slate-500 uppercase tracking-widest"><th className="p-4">PAIR</th><th className="p-4">ID</th><th className="p-4">STATUS</th><th className="p-4 text-right">ACTION</th></tr></thead>
               <tbody className="text-xs font-mono">
                 {monitoredPools.map(p => (
                   <tr key={p.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
                     <td className="p-4 font-sans font-bold">{p.pair}</td>
                     <td className="p-4 text-slate-500">{p.id.slice(0, 10)}...</td>
                     <td className="p-4 text-cyan-400 font-bold">ARMED</td>
+                    <td className="p-4 text-right">
+                      <button 
+                        onClick={() => handleRemoveMonitor(p.id)}
+                        className="p-1 rounded hover:bg-red-500/20 text-slate-500 hover:text-red-500 transition-colors"
+                      >
+                        <span className="material-symbols-outlined text-[18px]">delete</span>
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
