@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  sentinel:
+    build:
+      context: .
+      dockerfile: Dockerfile.sentinel
+    container_name: wraith-sentinel
+    restart: always
+    env_file:
+      - .env
+    volumes:
+      - ./logs:/app/logs
+
+  keeper:
+    build:
+      context: .
+      dockerfile: Dockerfile.keeper
+    container_name: wraith-keeper
+    restart: always
+    env_file:
+      - .env
+    depends_on:
+      - sentinel
+    volumes:
+      - ./proofs:/app/proofs
+      - ./logs:/app/logs
+
+volumes:
+  logs:
+  proofs:
