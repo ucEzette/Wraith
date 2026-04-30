@@ -14,6 +14,11 @@
  */
 
 import { ethers } from "ethers";
+import fs from "fs";
+import path from "path";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 // ══════════════════════════════════════════════════════════════
 //                      CONFIGURATION
@@ -32,8 +37,8 @@ const CONFIG = {
 
   // Safe assets
   safeAssets: {
-    USDC: process.env.USDC_ADDRESS || "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-    WETH: process.env.WETH_ADDRESS || "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+    USDC: process.env.USDC_ADDRESS || "0x31d0220469e10c4E71834a79b1f276d740d3768F",
+    WETH: process.env.WETH_ADDRESS || "0x4200000000000000000000000000000000000006",
   },
 
   // KeeperHub
@@ -69,8 +74,43 @@ const WRAITH_HOOK_ABI = [
   "function isWraithGuard(address) view returns (bool)",
   "function userVaults(address) view returns (address)",
   "function maliceProofs(bytes32) view returns (bytes32)",
-  "function executeQuantumRescue(tuple(address,address,uint24,int24,address) key, address user) external",
+  "function executeQuantumRescue(tuple(address currency0, address currency1, uint24 fee, int24 tickSpacing, address hooks) key, address user) external",
+  "function triggerQuantumExit(tuple(address currency0, address currency1, uint24 fee, int24 tickSpacing, address hooks) key, address user) external",
+  "function getWraithGuardUsers() external view returns (address[])",
+  "function userAutoExit(address) view returns (bool)",
 ];
+
+// Pool Registry for resolving PoolId -> PoolKey
+const POOL_REGISTRY = {
+  "0x7a207acaddeb221078ce37512f88e050c2bceecc95f5e7ae7527830b8e0e5734": {
+    currency0: "0x31d0220469e10c4E71834a79b1f276d740d3768F", // USDC
+    currency1: "0x4200000000000000000000000000000000000006", // WETH
+    fee: 3000,
+    tickSpacing: 60,
+    hooks: CONFIG.wraithHook,
+  },
+  "0xa869e4cae78878d6a85917f3e3556c307c18c8e6d1112d04625f16ff77655b2f": {
+    currency0: "0x31d0220469e10c4E71834a79b1f276d740d3768F", // USDC
+    currency1: "0x9d803A3066C858d714C4F5eE286eaa6249D451aB", // QPHAN
+    fee: 3000,
+    tickSpacing: 60,
+    hooks: CONFIG.wraithHook,
+  },
+  "0xafd44b0172fc530c071d599a1832e335e9e4444eb03cdbe6e10b7c584e383a45": {
+    currency0: "0x31d0220469e10c4E71834a79b1f276d740d3768F", // USDC
+    currency1: "0x6586035D5e39e30bf37445451b43EEaEeAa1405a", // ECHO
+    fee: 3000,
+    tickSpacing: 60,
+    hooks: CONFIG.wraithHook,
+  },
+  "0xbf4bf38f15e9235195e7fe78f4f789a6f5cbd1625fc7e47d5485bfd0f44aeee2": {
+    currency0: "0x31d0220469e10c4E71834a79b1f276d740d3768F", // USDC
+    currency1: "0x9dA26648257a17bEB42d9464663b7b9Ce1c4f174", // WRAITH
+    fee: 3000,
+    tickSpacing: 60,
+    hooks: CONFIG.wraithHook,
+  }
+};
 
 const POOL_MANAGER_ABI = [
   "function unlock(bytes calldata data) external returns (bytes memory)",
@@ -289,41 +329,54 @@ class WraithEventListener {
   }
 
   async start() {
-    console.log("[Listener] Subscribing to WraithHook events...");
+    console.log("[Listener] Starting manual event polling for WraithHook...");
+    console.log(`  Target: ${this.contract.target}`);
 
-    // ToxicityUpdated
-    this.contract.on("ToxicityUpdated", async (poolId, score, proofHash, event) => {
-      console.log(`\n🔴 TOXICITY UPDATED`);
-      console.log(`  Pool: ${poolId}`);
-      console.log(`  Score: ${score.toString()} / 10000`);
-      console.log(`  Proof: ${proofHash}`);
+    let lastBlock = await this.provider.getBlockNumber();
+    console.log(`  Starting from block: ${lastBlock}`);
 
-      const handler = this.handlers.get("ToxicityUpdated");
-      if (handler) await handler({ poolId, score, proofHash, event });
-    });
+    const poll = async () => {
+      try {
+        const currentBlock = await this.provider.getBlockNumber();
+        if (currentBlock > lastBlock) {
+          // console.log(`[Listener] Polling blocks ${lastBlock + 1} to ${currentBlock}...`);
+          
+          // ToxicityUpdated
+          const toxicityLogs = await this.contract.queryFilter(
+            this.contract.filters.ToxicityUpdated(),
+            lastBlock + 1,
+            currentBlock
+          );
+          for (const log of toxicityLogs) {
+            const { poolId, score, proofHash } = log.args;
+            console.log(`\n🔴 [POLL] TOXICITY UPDATED in block ${log.blockNumber}`);
+            const handler = this.handlers.get("ToxicityUpdated");
+            if (handler) await handler({ poolId, score, proofHash, event: log });
+          }
 
-    // PoisonHookActivated
-    this.contract.on("PoisonHookActivated", async (poolId, attacker, poisonFee, event) => {
-      console.log(`\n☠️  POISON HOOK ACTIVATED`);
-      console.log(`  Pool: ${poolId}`);
-      console.log(`  Attacker: ${attacker}`);
-      console.log(`  Fee: ${poisonFee} (99%)`);
+          // QuantumExitTriggered
+          const exitLogs = await this.contract.queryFilter(
+            this.contract.filters.QuantumExitTriggered(),
+            lastBlock + 1,
+            currentBlock
+          );
+          for (const log of exitLogs) {
+            const { poolId, user, rescueToken, amount0, amount1 } = log.args;
+            console.log(`\n⚡ [POLL] QUANTUM EXIT TRIGGERED in block ${log.blockNumber}`);
+            const handler = this.handlers.get("QuantumExitTriggered");
+            if (handler) await handler({ poolId, user, rescueToken, amount0, amount1, event: log });
+          }
 
-      const handler = this.handlers.get("PoisonHookActivated");
-      if (handler) await handler({ poolId, attacker, poisonFee, event });
-    });
+          lastBlock = currentBlock;
+        }
+      } catch (error) {
+        console.error(`[Listener] Poll error: ${error.message}`);
+      }
+      setTimeout(poll, 2000); // Poll every 2 seconds
+    };
 
-    // QuantumExitTriggered
-    this.contract.on("QuantumExitTriggered", async (poolId, user, amount0, amount1, event) => {
-      console.log(`\n⚡ QUANTUM EXIT TRIGGERED`);
-      console.log(`  Pool: ${poolId}`);
-      console.log(`  User: ${user}`);
-
-      const handler = this.handlers.get("QuantumExitTriggered");
-      if (handler) await handler({ poolId, user, amount0, amount1, event });
-    });
-
-    console.log("[Listener] Subscribed to all WraithHook events");
+    poll();
+    console.log("[Listener] Polling loop active ✓");
   }
 
   async stop() {
@@ -344,6 +397,7 @@ class KeeperRelay {
     this.keeperHub = null;
     this.rescueQueue = [];
     this.processedExits = new Set();
+    this.processedToxicity = new Set();
     this.axlWarningLogged = false;
   }
 
@@ -352,15 +406,13 @@ class KeeperRelay {
     console.log("║   WRAITH KEEPER RELAY — STARTING     ║");
     console.log("╚══════════════════════════════════════╝\n");
 
-    // Connect to node
-    if (CONFIG.wsUrl) {
-      this.provider = new ethers.WebSocketProvider(CONFIG.wsUrl);
-    } else {
-      this.provider = new ethers.JsonRpcProvider(CONFIG.rpcUrl);
-    }
+    // Connect to node - Force JsonRpcProvider for stability with manual polling
+    this.provider = new ethers.JsonRpcProvider(CONFIG.rpcUrl);
 
     const network = await this.provider.getNetwork();
     console.log(`[Init] Connected to chain: ${network.chainId}`);
+    console.log(`[Init] Hook Address: ${CONFIG.wraithHook}`);
+    console.log(`[Init] Manager Address: ${CONFIG.poolManager}`);
 
     // Setup wallet
     if (CONFIG.keeperPrivateKey) {
@@ -392,65 +444,6 @@ class KeeperRelay {
    * Polls the local AXL sidecar (localhost:8001).
    */
   async startAXLListener() {
-    console.log(`[AXL] Starting mesh polling at ${CONFIG.axlProxyUrl}...`);
-    
-    setInterval(async () => {
-      try {
-        const response = await fetch(`${CONFIG.axlProxyUrl}/messages`);
-        if (response.ok) {
-          const messages = await response.json();
-          if (messages && messages.length > 0) {
-            for (const msg of messages) {
-              if (msg.type === "A2A_MESSAGE") {
-                console.log(`\n📡 AXL MESH ALERT RECEIVED`);
-                console.log(`  Source: Sentinel Node`);
-                console.log(`  Pool: ${msg.data.poolId}`);
-                console.log(`  Score: ${msg.data.score / 100}%`);
-                
-                // Direct trigger of pre-emptive rescue logic
-                if (msg.data.score >= 8500) {
-                  await this.handleAXLThreatAlert(msg.data);
-                }
-              }
-            }
-          }
-        }
-      } catch (error) {
-        if (!this.axlWarningLogged) {
-          console.warn(`[AXL] Proxy not reachable at ${CONFIG.axlProxyUrl}. Mesh polling inactive.`);
-          this.axlWarningLogged = true;
-        }
-      }
-    }, CONFIG.axlPollIntervalMs);
-  }
-
-  async handleAXLThreatAlert(data) {
-    console.log(`[AXL] Pre-emptively warming up flash-rescue cache for pool ${data.poolId}...`);
-    // In production, this would verify the Gensyn proof hash via AEL before relaying
-  }
-
-  setupEventHandlers() {
-    // Handle Quantum Exit events
-    this.listener.on("QuantumExitTriggered", async (data) => {
-      await this.handleQuantumExit(data);
-    });
-
-    // Handle Toxicity events for MEV capture
-    this.listener.on("ToxicityUpdated", async (data) => {
-      const score = Number(data.score);
-      if (score >= 8500) {
-        console.log(`[Alert] Critical toxicity detected! Score: ${score / 100}%`);
-        console.log(`[Alert] Preparing MEV capture strategy...`);
-      }
-    });
-
-    // Log Poison Hook activations
-    this.listener.on("PoisonHookActivated", async (data) => {
-      console.log(`[Slash] Attacker ${data.attacker} slashed with 99% fee!`);
-    });
-  }
-
-  async startAXLListener() {
     console.log(`[AXL] Peer-to-Peer node online at ${CONFIG.axlProxyUrl}`);
     
     const pollAXL = async () => {
@@ -468,20 +461,102 @@ class KeeperRelay {
               // Prepare for MEV-protected rescue
               if (msg.data.score >= 8500) {
                 console.log(`[AXL] Preparing defensive Flash-Rescue strategy...`);
+                await this.handleAXLThreatAlert(msg.data);
               }
             }
           }
         }
       } catch (e) {
-        // Silently retry - node might be starting up
+        if (!this.axlWarningLogged) {
+          console.warn(`[AXL] Proxy not reachable at ${CONFIG.axlProxyUrl}. Mesh polling inactive.`);
+          this.axlWarningLogged = true;
+        }
       }
-      setTimeout(pollAXL, CONFIG.axlPollIntervalMs);
+      setTimeout(() => pollAXL(), CONFIG.axlPollIntervalMs);
     };
     pollAXL();
   }
 
+  async handleAXLThreatAlert(data) {
+    console.log(`[AXL] Pre-emptively warming up flash-rescue cache for pool ${data.poolId}...`);
+    // In production, this would verify the Gensyn proof hash via AEL before relaying
+  }
+
+  setupEventHandlers() {
+    // Handle Quantum Exit events
+    this.listener.on("QuantumExitTriggered", async (data) => {
+      await this.handleQuantumExit(data);
+    });
+
+    // Handle Toxicity events for MEV capture and proactive exit triggering
+    this.listener.on("ToxicityUpdated", async (data) => {
+      const { poolId, score } = data;
+      const tScore = Number(score);
+      
+      console.log(`[Relay] Processing ToxicityUpdated: Pool=${poolId}, Score=${tScore}`);
+      
+      if (tScore >= 8500) {
+        console.log(`[Relay] 🚨 CRITICAL TOXICITY (>=85%): ${tScore / 100}%`);
+        
+        try {
+          if (!this.wallet) {
+            console.error("[Relay] Keeper wallet not initialized. Check PRIVATE_KEY.");
+            return;
+          }
+
+          const hookContract = new ethers.Contract(
+            CONFIG.wraithHook,
+            WRAITH_HOOK_ABI,
+            this.wallet
+          );
+
+          // 1. Resolve PoolKey from Registry
+          const pid = poolId.toLowerCase();
+          const poolKey = POOL_REGISTRY[pid];
+          
+          if (!poolKey) {
+            console.error(`[Relay] PoolId ${pid} NOT FOUND in registry. Available keys: ${Object.keys(POOL_REGISTRY).join(", ")}`);
+            return;
+          }
+
+          console.log(`[Relay] Resolved PoolKey for ${pid}. Fetching users...`);
+
+          // 2. Fetch all registered users
+          const users = await hookContract.getWraithGuardUsers();
+          console.log(`[Relay] Found ${users.length} registered users on-chain.`);
+
+          // 3. Trigger exits for users who opted in
+          for (const user of users) {
+            const autoExit = await hookContract.userAutoExit(user);
+            console.log(`[Relay] User ${user}: AutoExit=${autoExit}`);
+            
+            if (autoExit) {
+              console.log(`[Relay] ⚡ TRIGGERING QUANTUM EXIT for ${user}...`);
+              const tx = await hookContract.triggerQuantumExit(poolKey, user, { gasLimit: 500000 });
+              console.log(`[Relay] Transaction Sent! Hash: ${tx.hash}`);
+              
+              // Optional: wait for confirmation to ensure it emitted the Triggered event
+              // const receipt = await tx.wait();
+              // console.log(`[Relay] Trigger confirmed in block ${receipt.blockNumber}`);
+            }
+          }
+        } catch (error) {
+          console.error(`[Relay] Error in proactive trigger loop: ${error.message}`);
+          console.error(error.stack);
+        }
+      } else {
+        console.log(`[Relay] Toxicity below threshold (${tScore}). No action taken.`);
+      }
+    });
+
+    // Log Poison Hook activations
+    this.listener.on("PoisonHookActivated", async (data) => {
+      console.log(`[Slash] Attacker ${data.attacker} slashed with 99% fee!`);
+    });
+  }
+
   async handleQuantumExit(data) {
-    const { poolId, user } = data;
+    const { poolId, user, rescueToken } = data;
     const exitKey = `${poolId}-${user}`;
 
     // Deduplicate
@@ -496,6 +571,7 @@ class KeeperRelay {
     console.log(`╚══════════════════════════════════════╝`);
     console.log(`  User: ${user}`);
     console.log(`  Pool: ${poolId}`);
+    console.log(`  Safe Asset: ${rescueToken}`);
 
     try {
       // Get user's vault
@@ -511,15 +587,16 @@ class KeeperRelay {
         return;
       }
 
+      // 1. Resolve PoolKey from Registry
+      const poolKey = POOL_REGISTRY[poolId.toLowerCase()];
+      if (!poolKey) {
+        console.error(`[Exit] PoolId ${poolId} not found in registry. Cannot build bundle.`);
+        return;
+      }
+
       // Build rescue bundle
       const bundle = FlashRescueBundle.build({
-        poolKey: {
-          currency0: ethers.ZeroAddress, // Will be resolved from pool
-          currency1: CONFIG.safeAssets.USDC,
-          fee: 0x800000,
-          tickSpacing: 60,
-          hooks: CONFIG.wraithHook,
-        },
+        poolKey,
         user,
         vault,
         liquidityParams: {
@@ -528,7 +605,7 @@ class KeeperRelay {
           liquidityDelta: ethers.MinInt256, // Remove all
           salt: ethers.ZeroHash,
         },
-        safeAsset: CONFIG.safeAssets.USDC,
+        safeAsset: rescueToken || CONFIG.safeAssets.USDC,
         deadline: Math.floor(Date.now() / 1000) + CONFIG.rescueDeadlineSeconds,
       });
 
@@ -554,6 +631,24 @@ class KeeperRelay {
       if (status.status === "confirmed") {
         console.log(`✅ Flash-Rescue CONFIRMED: ${bundleId}`);
         console.log(`   Tx: ${status.tx_hash || "N/A"}`);
+        
+        // Drop proof of execution
+        const proof = {
+          bundleId,
+          exitKey,
+          txHash: status.tx_hash,
+          timestamp: new Date().toISOString(),
+          status: "SUCCESS",
+          explorer: `https://sepolia.unichain.org/tx/${status.tx_hash}`
+        };
+        
+        const proofDir = path.join(process.cwd(), "proofs");
+        if (!fs.existsSync(proofDir)) fs.mkdirSync(proofDir);
+        
+        const proofPath = path.join(proofDir, `rescue_${bundleId}.json`);
+        fs.writeFileSync(proofPath, JSON.stringify(proof, null, 2));
+        console.log(`[Proof] Dropped execution proof to: ${proofPath}`);
+        
         return;
       }
       if (status.status === "failed") {
@@ -603,3 +698,4 @@ async function main() {
 }
 
 main().catch(console.error);
+

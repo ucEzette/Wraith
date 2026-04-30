@@ -89,11 +89,18 @@ contract WraithGuardTest is Test {
 
         // Register Alice as Wraith-Guard
         vm.prank(alice);
-        hook.registerWraithGuard(aliceVault);
+        hook.registerWraithGuard(aliceVault, 8500, address(0), true);
+
+        // Mock PoolManager isOperator call for Alice
+        vm.mockCall(
+            mockPoolManager,
+            abi.encodeWithSignature("isOperator(address,address)", alice, hookAddress),
+            abi.encode(true)
+        );
 
         // Arm the pool
         vm.prank(guardian);
-        hook.armPool(poolKey);
+        hook.armPool(poolKey, "MOCK/USD");
     }
 
     // ══════════════════════════════════════════════════════════
@@ -108,7 +115,7 @@ contract WraithGuardTest is Test {
     function test_RegisterWraithGuard_DoubleRegistration_Reverts() public {
         vm.prank(alice);
         vm.expectRevert(WraithHook.AlreadyRegistered.selector);
-        hook.registerWraithGuard(aliceVault);
+        hook.registerWraithGuard(aliceVault, 8500, address(0), true);
     }
 
     function test_RevokeWraithGuard() public {
@@ -119,18 +126,7 @@ contract WraithGuardTest is Test {
         assertEq(hook.userVaults(alice), address(0), "Alice vault should be cleared");
     }
 
-    function test_UpdateVault() public {
-        address newVault = makeAddr("newVault");
-        vm.prank(alice);
-        hook.updateVault(newVault);
-        assertEq(hook.userVaults(alice), newVault, "Vault should be updated");
-    }
-
-    function test_UpdateVault_NotRegistered_Reverts() public {
-        vm.prank(bob);
-        vm.expectRevert(WraithHook.NotRegistered.selector);
-        hook.updateVault(aliceVault);
-    }
+    // UpdateVault tests removed since the function was removed
 
     // ══════════════════════════════════════════════════════════
     //           TEST: TOXICITY UPDATES (Sentinel)
@@ -376,14 +372,14 @@ contract WraithGuardTest is Test {
         assertFalse(hook.isArmedPool(poolId), "Pool should be disarmed");
 
         vm.prank(guardian);
-        hook.armPool(poolKey);
+        hook.armPool(poolKey, "MOCK/USD");
         assertTrue(hook.isArmedPool(poolId), "Pool should be re-armed");
     }
 
     function test_ArmPool_OnlyGuardian() public {
         vm.prank(bob);
         vm.expectRevert(WraithHook.OnlyGuardian.selector);
-        hook.armPool(poolKey);
+        hook.armPool(poolKey, "MOCK/USD");
     }
 
     function test_SetSentinel() public {

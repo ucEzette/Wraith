@@ -14,6 +14,9 @@ import time
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional
+from dotenv import load_dotenv
+
+load_dotenv()
 
 import numpy as np
 from eth_abi import encode
@@ -227,7 +230,7 @@ class ToxicityModel:
         """
         Compute final toxicity score using bitwise-reproducible REE logic.
         """
-        from agents.toxicity_model_ree import calculate_toxicity
+        from toxicity_model_ree import calculate_toxicity
         
         # Prepare inputs for REE
         mempool_data = {
@@ -467,6 +470,20 @@ class WraithRelay:
             "outputs": [],
             "stateMutability": "nonpayable",
             "type": "function"
+        },
+        {
+            "inputs": [],
+            "name": "getWraithGuardUsers",
+            "outputs": [{"name": "", "type": "address[]"}],
+            "stateMutability": "view",
+            "type": "function"
+        },
+        {
+            "inputs": [{"name": "", "type": "address"}],
+            "name": "userAutoExit",
+            "outputs": [{"name": "", "type": "bool"}],
+            "stateMutability": "view",
+            "type": "function"
         }
     ]""")
 
@@ -483,33 +500,55 @@ class WraithRelay:
         self, pool_key: dict, score: int, proof_hash: bytes, attackers: list[str]
     ):
         """Send updateToxicity transaction to WraithHook."""
-        tx = await self.contract.functions.updateToxicity(
-            pool_key, score, proof_hash, attackers
-        ).build_transaction({
-            "from": self.account.address,
-            "nonce": await self.w3.eth.get_transaction_count(self.account.address),
-            "gas": 500_000,
-            "chainId": CHAIN_ID,
-        })
-        signed = self.account.sign_transaction(tx)
-        tx_hash = await self.w3.eth.send_raw_transaction(signed.raw_transaction)
-        logger.info(f"Toxicity update tx: {tx_hash.hex()}")
-        return tx_hash
+        try:
+            tx = await self.contract.functions.updateToxicity(
+                pool_key, score, proof_hash, attackers
+            ).build_transaction({
+                "from": self.account.address,
+                "nonce": await self.w3.eth.get_transaction_count(self.account.address),
+                "gas": 500_000,
+                "chainId": CHAIN_ID,
+            })
+            signed = self.account.sign_transaction(tx)
+            tx_hash = await self.w3.eth.send_raw_transaction(signed.raw_transaction)
+            logger.info(f"Toxicity update tx: {tx_hash.hex()}")
+            return tx_hash
+        except Exception as e:
+            logger.error(f"Failed to update toxicity: {e}")
+            return None
 
     async def trigger_quantum_exit(self, pool_key: dict, user: str):
         """Send triggerQuantumExit transaction to WraithHook."""
-        tx = await self.contract.functions.triggerQuantumExit(
-            pool_key, user
-        ).build_transaction({
-            "from": self.account.address,
-            "nonce": await self.w3.eth.get_transaction_count(self.account.address),
-            "gas": 300_000,
-            "chainId": CHAIN_ID,
-        })
-        signed = self.account.sign_transaction(tx)
-        tx_hash = await self.w3.eth.send_raw_transaction(signed.raw_transaction)
-        logger.info(f"Quantum Exit tx: {tx_hash.hex()}")
-        return tx_hash
+        try:
+            tx = await self.contract.functions.triggerQuantumExit(
+                pool_key, user
+            ).build_transaction({
+                "from": self.account.address,
+                "nonce": await self.w3.eth.get_transaction_count(self.account.address),
+                "gas": 300_000,
+                "chainId": CHAIN_ID,
+            })
+            signed = self.account.sign_transaction(tx)
+            tx_hash = await self.w3.eth.send_raw_transaction(signed.raw_transaction)
+            logger.info(f"🚀 Quantum Exit Triggered for user {user[:10]}...: {tx_hash.hex()}")
+            return tx_hash
+        except Exception as e:
+            logger.error(f"Failed to trigger Quantum Exit for {user}: {e}")
+            return None
+
+    async def get_auto_exit_users(self) -> list[str]:
+        """Fetch all users who have auto-exit enabled."""
+        try:
+            users = await self.contract.functions.getWraithGuardUsers().call()
+            auto_exit_users = []
+            for user in users:
+                is_enabled = await self.contract.functions.userAutoExit(user).call()
+                if is_enabled:
+                    auto_exit_users.append(user)
+            return auto_exit_users
+        except Exception as e:
+            logger.error(f"Failed to fetch auto-exit users: {e}")
+            return []
 
 
 # ══════════════════════════════════════════════════════════════
@@ -676,6 +715,16 @@ class SentinelAgent:
                     proof_hash=proof_hash,
                     attackers=report.flagged_addresses,
                 )
+
+                # 2. Automatically trigger Quantum Exits for users with Auto-Exit enabled
+                logger.info(f"[Sentinel] Checking for Quantum Auto-Exit users...")
+                auto_users = await self.relay.get_auto_exit_users()
+                if auto_users:
+                    logger.info(f"[Sentinel] Found {len(auto_users)} users for auto-exit. Triggering...")
+                    for user in auto_users:
+                        await self.relay.trigger_quantum_exit(pool_info["pool_key"], user)
+                else:
+                    logger.info("[Sentinel] No auto-exit users found for this pool.")
         else:
             level = report.threat_level.value
             logger.info(
@@ -719,19 +768,61 @@ class SentinelAgent:
 async def main():
     agent = SentinelAgent()
 
-    # Example: monitor a pool (configure via env or API in production)
-    # agent.add_monitored_pool(
-    #     pool_id="0xabc...123",
-    #     pool_key={
-    #         "currency0": "0x...",
-    #         "currency1": "0x...",
-    #         "fee": 0x800000,
-    #         "tickSpacing": 60,
-    #         "hooks": WRAITH_HOOK_ADDRESS,
-    #     },
-    #     token_address="0x...",
-    #     dev_address="0x...",
-    # )
+    # 1. Monitor ETH / USDC
+    agent.add_monitored_pool(
+        pool_id="0x7a207acaddeb221078ce37512f88e050c2bceecc95f5e7ae7527830b8e0e5734",
+        pool_key={
+            "currency0": "0x31d0220469e10c4E71834a79b1f276d740d3768F", # USDC
+            "currency1": "0x4200000000000000000000000000000000000006", # WETH
+            "fee": 3000,
+            "tickSpacing": 60,
+            "hooks": WRAITH_HOOK_ADDRESS,
+        },
+        token_address="0x4200000000000000000000000000000000000006",
+        dev_address="0x0000000000000000000000000000000000000000", 
+    )
+
+    # 2. Monitor QPHAN / USDC
+    agent.add_monitored_pool(
+        pool_id="0xa869e4cae78878d6a85917f3e3556c307c18c8e6d1112d04625f16ff77655b2f",
+        pool_key={
+            "currency0": "0x31d0220469e10c4E71834a79b1f276d740d3768F", # USDC
+            "currency1": "0x9d803a3066c858d714c4f5ee286eaa6249d451ab", # QPHAN
+            "fee": 3000,
+            "tickSpacing": 60,
+            "hooks": WRAITH_HOOK_ADDRESS,
+        },
+        token_address="0x9d803a3066c858d714c4f5ee286eaa6249d451ab",
+        dev_address="0x68faebf19fa57658d37bf885f5377f735fe97d70",
+    )
+
+    # 3. Monitor ECHO / USDC
+    agent.add_monitored_pool(
+        pool_id="0xafd44b0172fc530c071d599a1832e335e9e4444eb03cdbe6e10b7c584e383a45",
+        pool_key={
+            "currency0": "0x31d0220469e10c4E71834a79b1f276d740d3768F", # USDC
+            "currency1": "0x6586035d5e39e30bf37445451b43eeaeeaa1405a", # ECHO
+            "fee": 3000,
+            "tickSpacing": 60,
+            "hooks": WRAITH_HOOK_ADDRESS,
+        },
+        token_address="0x6586035d5e39e30bf37445451b43eeaeeaa1405a",
+        dev_address="0x68faebf19fa57658d37bf885f5377f735fe97d70",
+    )
+
+    # 4. Monitor WRAITH / USDC
+    agent.add_monitored_pool(
+        pool_id="0xbf4bf38f15e9235195e7fe78f4f789a6f5cbd1625fc7e47d5485bfd0f44aeee2",
+        pool_key={
+            "currency0": "0x31d0220469e10c4E71834a79b1f276d740d3768F", # USDC
+            "currency1": "0x9dA26648257a17bEB42d9464663b7b9Ce1c4f174", # WRAITH
+            "fee": 3000,
+            "tickSpacing": 60,
+            "hooks": WRAITH_HOOK_ADDRESS,
+        },
+        token_address="0x9dA26648257a17bEB42d9464663b7b9Ce1c4f174",
+        dev_address="0x68faebf19fa57658d37bf885f5377f735fe97d70",
+    )
 
     await agent.run()
 

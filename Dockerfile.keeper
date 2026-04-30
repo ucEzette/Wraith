@@ -1,0 +1,25 @@
+FROM node:20-slim
+
+WORKDIR /app
+
+# Install dependencies needed for some node modules
+RUN apt-get update && apt-get install -y \
+    python3 \
+    make \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy package configuration
+COPY package*.json ./
+
+# Install dependencies (including production-only to save space)
+RUN npm install
+
+# Copy source code and scripts
+COPY scripts/ ./scripts/
+
+# Create proofs directory
+RUN mkdir -p proofs logs
+
+# Start the relay
+CMD ["node", "scripts/keeper_relay.js"]

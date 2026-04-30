@@ -1,0 +1,25 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
+RUN pip install --no-cache-dir \
+    web3 \
+    numpy \
+    eth-abi \
+    requests \
+    python-dotenv
+
+# Copy agent code and configuration
+COPY agents/ ./agents/
+
+# Create logs directory
+RUN mkdir -p logs
+
+# Start the sentinel
+CMD ["python", "agents/sentinel.py"]
