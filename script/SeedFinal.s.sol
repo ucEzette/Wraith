@@ -8,6 +8,7 @@ import {Currency, CurrencyLibrary} from "v4-core/src/types/Currency.sol";
 import {IHooks} from "v4-core/src/interfaces/IHooks.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {BalanceDelta} from "v4-core/src/types/BalanceDelta.sol";
+import {PoolId, PoolIdLibrary} from "v4-core/src/types/PoolId.sol";
 
 interface IPoolModifyLiquidityTest {
     function modifyLiquidity(
@@ -19,6 +20,7 @@ interface IPoolModifyLiquidityTest {
 
 contract SeedFinal is Script {
     using CurrencyLibrary for Currency;
+    using PoolIdLibrary for PoolKey;
 
     address constant POOL_MANAGER = 0x00B036B58a818B1BC34d502D3fE730Db729e62AC;
     address constant MODIFY_LIQUIDITY_TEST = 0x5fa728C0A5cfd51BEe4B060773f50554c0C8A7AB;
@@ -27,7 +29,7 @@ contract SeedFinal is Script {
     address constant QPHAN = 0x9d803A3066C858d714c4F5eE286eaa6249d451aB;
     address constant ECHO = 0x6586035D5e39e30bf37445451b43EEaEeAa1405a;
     address constant WRAITH = 0x9dA26648257a17bEB42d9464663b7b9Ce1c4f174;
-    address constant HOOK = 0x7Da6934Dc1231398C63DE28051588775B1b70280;
+    address constant HOOK = 0xD56388a4ce5Cd9E236201AD3DF27Edfbb28E0280;
 
     function run() public {
         uint256 pk = vm.envUint("PRIVATE_KEY");
@@ -49,8 +51,16 @@ contract SeedFinal is Script {
                 hooks: IHooks(HOOK)
             });
 
-            // Initialize is done, so we skip.
+            // Initialize the pool
+            try IPoolManager(POOL_MANAGER).initialize(key, 79228162514264337593543950336) returns (int24) {
+                console2.log(names[i], "initialized!");
+            } catch {
+                console2.log(names[i], "already initialized");
+            }
             
+            console2.log(names[i], "PoolId:");
+            console2.logBytes32(PoolId.unwrap(key.toId()));
+
             // Approvals - MUST approve the TEST contract, not the manager
             if (Currency.unwrap(key.currency0) != address(0)) IERC20(Currency.unwrap(key.currency0)).approve(MODIFY_LIQUIDITY_TEST, type(uint256).max);
             if (Currency.unwrap(key.currency1) != address(0)) IERC20(Currency.unwrap(key.currency1)).approve(MODIFY_LIQUIDITY_TEST, type(uint256).max);
