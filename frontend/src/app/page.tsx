@@ -15,6 +15,9 @@ import {
   poolManagerConfig,
 } from "../lib/contracts";
 import { erc20Abi } from "viem";
+import { CommandTerminal } from "../components/CommandTerminal";
+import { AlertSystem, Alert } from "../components/AlertSystem";
+import { useRef } from "react";
 
 export default function DashboardPage() {
   const { address } = useAccount(); // Need to import useAccount too
@@ -57,6 +60,12 @@ export default function DashboardPage() {
   ); // USDC default
   const [isOperatorApproved, setIsOperatorApproved] = useState(false);
   const [rescueHistory, setRescueHistory] = useState<any[]>([]);
+
+  // Terminal & Alert State
+  const [isTerminalOpen, setIsTerminalOpen] = useState(false);
+  const [isAlertsOpen, setIsAlertsOpen] = useState(false);
+  const [alerts, setAlerts] = useState<Alert[]>([]);
+  const seenAlerts = useRef<Set<string>>(new Set());
 
   const { writeContractAsync } = useWriteContract();
 
@@ -593,6 +602,100 @@ export default function DashboardPage() {
     return () => clearInterval(interval);
   }, [publicClient, address]);
 
+  // Alert Monitoring Loop
+  useEffect(() => {
+    Object.entries(poolData).forEach(([id, data]) => {
+      if (data.toxicity > 85 && !seenAlerts.current.has(id)) {
+        const newAlert: Alert = {
+          id: Math.random().toString(36).substring(7),
+          poolId: id,
+          toxicity: data.toxicity,
+          time: new Date().toLocaleTimeString(),
+          isRead: false
+        };
+        setAlerts(prev => [newAlert, ...prev]);
+        seenAlerts.current.add(id);
+        
+        toast.error(`CRITICAL TOXICITY: Pool ${id.slice(0, 8)} at ${data.toxicity.toFixed(1)}%`, {
+          icon: '⚠️',
+          duration: 6000,
+          style: {
+            background: '#020617',
+            color: '#ef4444',
+            border: '1px solid #ef4444'
+          }
+        });
+
+        if ("Notification" in window && Notification.permission === "granted") {
+          new Notification("Wraith Protocol Alert", {
+            body: `Critical toxicity detected in pool ${id.slice(0, 8)}`,
+            icon: "/logo.png"
+          });
+        }
+      } else if (data.toxicity < 70) {
+        seenAlerts.current.delete(id);
+      }
+    });
+  }, [poolData]);
+
+  const handleCommandExecute = async (cmd: string) => {
+    const args = cmd.split(' ');
+    const action = args[0].toLowerCase();
+    const val = args[1];
+
+    switch(action) {
+      case 'help':
+        return "Commands: \n- add <id>     : Monitor a pool\n- score <id>   : Fetch on-chain toxicity\n- armed <id>   : Check armed status\n- focus <id>   : Select for main view\n- logs <n>     : Show last N events\n- status       : System health\n- alerts       : Open notifications\n- clear        : Reset buffer";
+      case 'add':
+        if (!val) return "ERR: Missing Pool ID";
+        await handleAddPool(val);
+        return `OK: Pool ${val.slice(0, 10)}... registered.`;
+      case 'score':
+        if (!val) return "ERR: Missing Pool ID";
+        try {
+          const score = await (publicClient as any)?.readContract({
+            ...wraithHookConfig,
+            functionName: 'toxicityScores',
+            args: [val as `0x${string}`]
+          });
+          return `ON-CHAIN SCORE [${val.slice(0, 8)}]: ${(Number(score) / 100).toFixed(2)}%`;
+        } catch (e) { return `ERR: Failed to fetch score for ${val.slice(0, 8)}`; }
+      case 'armed':
+        if (!val) return "ERR: Missing Pool ID";
+        try {
+          const armed = await (publicClient as any)?.readContract({
+            ...wraithHookConfig,
+            functionName: 'isArmedPool',
+            args: [val as `0x${string}`]
+          });
+          return `ARM STATUS [${val.slice(0, 8)}]: ${armed ? 'ACTIVE (ARMED)' : 'STANDBY'}`;
+        } catch (e) { return `ERR: Failed to fetch status for ${val.slice(0, 8)}`; }
+      case 'focus':
+        if (!val) return "ERR: Missing Pool ID";
+        handleFocusMonitor(val);
+        return `OK: Focusing ${val.slice(0, 10)}...`;
+      case 'remove':
+        if (!val) return "ERR: Missing Pool ID";
+        handleRemoveMonitor(val);
+        return `OK: Pool ${val.slice(0, 10)} removed.`;
+      case 'status':
+        return `SYSTEM STATUS: OK\n- BLOCK: ${stats.currentBlock}\n- MONITOR_COUNT: ${monitoredPools.length}\n- ARM_STATUS: ${displayArmed ? 'ACTIVE' : 'STANDBY'}\n- SYNC: 100% (LOCAL_RPC)`;
+      case 'logs':
+        const count = parseInt(val) || 5;
+        const events = liveEvents.slice(0, count);
+        return events.length > 0 ? 
+          events.map(e => `[${e.time}] ${e.type}: ${e.msg}`).join('\n') :
+          "NO RECENT EVENTS DETECTED.";
+      case 'alerts':
+        setIsAlertsOpen(true);
+        return "OK: Opening alert dashboard.";
+      case 'clear':
+        return "OK: Terminal buffer cleared.";
+      default:
+        return `ERR: Unknown command '${action}'. Type 'help' for options.`;
+    }
+  };
+
   const handleFocusMonitor = (id: string) => {
     setTargetPoolId(id);
     localStorage.setItem("wraith_focused_pool", id);
@@ -643,11 +746,31 @@ export default function DashboardPage() {
         </div>
         {/* Trailing Actions */}
         <div className="flex items-center gap-lg">
-          <div className="flex items-center gap-sm">
-            <span className="material-symbols-outlined text-[18px] cursor-pointer hover:text-cyan-200 transition-colors">
-              notifications
-            </span>
-            <span className="material-symbols-outlined text-[18px] cursor-pointer hover:text-cyan-200 transition-colors">
+          <div className="flex items-center gap-sm relative">
+            <div className="relative">
+              <span 
+                className={`material-symbols-outlined text-[18px] cursor-pointer hover:text-cyan-200 transition-colors ${alerts.some(a => !a.isRead) ? 'text-cyan-400' : ''}`}
+                onClick={() => setIsAlertsOpen(!isAlertsOpen)}
+              >
+                notifications
+              </span>
+              {alerts.some(a => !a.isRead) && (
+                <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-ping"></span>
+              )}
+              
+              <AlertSystem 
+                alerts={alerts}
+                isOpen={isAlertsOpen}
+                onClose={() => setIsAlertsOpen(false)}
+                onMarkRead={(id) => setAlerts(prev => prev.map(a => a.id === id ? {...a, isRead: true} : a))}
+                onClearAll={() => { setAlerts([]); seenAlerts.current.clear(); }}
+              />
+            </div>
+
+            <span 
+              className="material-symbols-outlined text-[18px] cursor-pointer hover:text-cyan-200 transition-colors"
+              onClick={() => setIsTerminalOpen(true)}
+            >
               terminal
             </span>
           </div>
@@ -1215,6 +1338,12 @@ export default function DashboardPage() {
         </div>
         {/* Scanline Overlay hint from JSON applied as class/style previously, maintaining clean footer structural output */}
       </footer>
+      
+      <CommandTerminal 
+        isOpen={isTerminalOpen}
+        onClose={() => setIsTerminalOpen(false)}
+        onExecute={handleCommandExecute}
+      />
     </>
   );
 }
