@@ -1,0 +1,30 @@
+services:
+  - type: worker
+    name: wraith-sentinel
+    env: docker
+    dockerfilePath: Dockerfile.sentinel
+    restartPolicy: always
+    envVars:
+      - key: PRIVATE_KEY
+        sync: false
+      - key: UNICHAIN_RPC_URL
+        value: https://sepolia.unichain.org
+      - key: WRAITH_HOOK_ADDRESS
+        value: "0xD56388a4ce5Cd9E236201AD3DF27Edfbb28E0280"
+      - key: GENSYN_API_KEY
+        sync: false
+
+  - type: worker
+    name: wraith-keeper
+    env: docker
+    dockerfilePath: Dockerfile.keeper
+    restartPolicy: always
+    envVars:
+      - key: PRIVATE_KEY
+        sync: false
+      - key: UNICHAIN_RPC_URL
+        value: https://sepolia.unichain.org
+      - key: WRAITH_HOOK_ADDRESS
+        value: "0xD56388a4ce5Cd9E236201AD3DF27Edfbb28E0280"
+      - key: KEEPER_HUB_API_KEY
+        sync: false
