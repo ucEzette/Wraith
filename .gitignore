@@ -53,7 +53,7 @@ nohup.out
 .DS_Store
 
 # Forge / Foundry
-lib/
+/lib/
 foundry.lock
 broadcast/
 
