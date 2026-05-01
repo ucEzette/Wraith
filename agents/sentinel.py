@@ -20,7 +20,7 @@ load_dotenv()
 
 import numpy as np
 from eth_abi import encode
-from web3 import AsyncWeb3, WebSocketProvider
+from web3 import AsyncWeb3, WebSocketProvider, Web3
 
 # ══════════════════════════════════════════════════════════════
 #                     CONFIGURATION
@@ -491,7 +491,7 @@ class WraithRelay:
         self.w3 = w3
         self.account = w3.eth.account.from_key(private_key)
         self.contract = w3.eth.contract(
-            address=w3.to_checksum_address(hook_address),
+            address=Web3.to_checksum_address(hook_address),
             abi=self.HOOK_ABI,
         )
         logger.info(f"Relay initialized: hook={hook_address}, sentinel={self.account.address}")
@@ -616,12 +616,28 @@ class SentinelAgent:
                 await asyncio.sleep(2)
 
         self.mempool = MempoolMonitor(self.w3)
+        
+        # Checksum the hook address if provided
+        global WRAITH_HOOK_ADDRESS
+        if WRAITH_HOOK_ADDRESS:
+            try:
+                WRAITH_HOOK_ADDRESS = Web3.to_checksum_address(WRAITH_HOOK_ADDRESS)
+            except Exception as e:
+                logger.error(f"Invalid hook address {WRAITH_HOOK_ADDRESS}: {e}")
+                WRAITH_HOOK_ADDRESS = ""
 
         if WRAITH_HOOK_ADDRESS and SENTINEL_PRIVATE_KEY:
             self.relay = WraithRelay(self.w3, WRAITH_HOOK_ADDRESS, SENTINEL_PRIVATE_KEY)
 
     def add_monitored_pool(self, pool_id: str, pool_key: dict, token_address: str, dev_address: str):
         """Add a pool to the monitoring list."""
+        try:
+            token_address = Web3.to_checksum_address(token_address)
+            dev_address = Web3.to_checksum_address(dev_address)
+        except Exception as e:
+            logger.error(f"Failed to checksum addresses for pool {pool_id}: {e}")
+            return
+
         self.monitored_pools[pool_id] = {
             "pool_key": pool_key,
             "token_address": token_address,
@@ -741,6 +757,7 @@ class SentinelAgent:
         logger.info("╚══════════════════════════════════════╝")
 
         while True:
+            logger.info(f"--- Sentinel Heartbeat: Scanning {len(self.monitored_pools)} pools ---")
             for pool_id in list(self.monitored_pools.keys()):
                 try:
                     report = await self.scan_pool(pool_id)
