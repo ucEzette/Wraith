@@ -21,5 +21,5 @@ COPY scripts/ ./scripts/
 # Create proofs directory
 RUN mkdir -p proofs logs
 
-# Start the relay
-CMD ["node", "scripts/keeper_relay.js"]
+# Start a professional status dashboard on port 7860 and then start the keeper relay
+CMD node -e "require('http').createServer((r,s)=>{s.writeHead(200,{'Content-Type':'text/html'});s.end('<html><head><title>Wraith Keeper</title><style>body{background:#0a0a0a;color:#00ccff;font-family:monospace;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;margin:0} .status{border:1px solid #00ccff;padding:20px;border-radius:8px;box-shadow:0 0 20px rgba(0,204,255,0.2)} h1{margin-top:0}</style></head><body><div class=\"status\"><h1>WRAITH KEEPER HUB</h1><p>STATUS: [ READY ]</p><p>TARGET: UNICHAIN SEPOLIA</p><p>MODE: MEV-PROTECTED FLASH-RESCUE</p></div></body></html>')}).listen(7860)" & node scripts/keeper_relay.js
