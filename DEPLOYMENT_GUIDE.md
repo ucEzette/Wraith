@@ -9,92 +9,113 @@ This guide details the step-by-step process for deploying the Wraith Protocol in
 
 ## 1. Prerequisites
 - **Wallet**: A private key with at least 0.5 ETH on Unichain Sepolia.
-- **Node.js**: v18+ (for local/frontend).
-- **Docker**: For containerized agent hosting.
-- **Vercel Account**: For frontend hosting.
-- **Gensyn API Key**: For verifiable toxicity compute.
-- **KeeperHub API Key**: For MEV-protected bundle submission.
+- **Gensyn Credentials**: Register at [gensyn.ai](https://gensyn.ai) for AEL compute keys.
+- **KeeperHub API Key**: Register at [keeperhub.io](https://keeperhub.io) for MEV-protected bundle submission.
+- **Hosting**: A Vercel account (Frontend) and a VPS or Container Platform (Agents).
 
 ---
 
-## 2. Smart Contract Verification
-Ensure your contracts are deployed on Unichain Sepolia. The current addresses are:
-- **WraithHook**: `0xD56388a4ce5Cd9E236201AD3DF27Edfbb28E0280`
-- **PoolManager**: `0x00B036B58a818B1BC34d502D3fE730Db729e62AC`
+## 2. Infrastructure Deployment
 
-If redeploying, update these addresses in your `.env` file.
+### A. Frontend Dashboard (Vercel) — [COMPLETE]
+The frontend is already deployed on Vercel. Ensure the following **Environment Variables** are configured in the Vercel dashboard:
+- `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID`: Your project ID.
+- `WRAITH_HOOK_ADDRESS`: `0xD56388a4ce5Cd9E236201AD3DF27Edfbb28E0280`
+- `POOL_MANAGER_ADDRESS`: `0x00B036B58a818B1BC34d502D3fE730Db729e62AC`
 
----
+### B. Intelligence & Execution Agents (Railway / Render / VPS)
+The agents must run 24/7. We recommend **Railway** for ease of use or a **Hetzner VPS** for reliability.
 
-## 3. Environment Configuration
-Create a `.env` file in the root directory (use `.env.example` as a template):
-
+#### 1. Setup Environment
+Create a `.env` on your hosting provider with:
 ```bash
-cp .env.example .env
+PRIVATE_KEY=your_key_here
+UNICHAIN_RPC_URL=https://sepolia.unichain.org
+WRAITH_HOOK_ADDRESS=0xD56388a4ce5Cd9E236201AD3DF27Edfbb28E0280
+GENSYN_API_KEY=your_gensyn_key
+KEEPER_HUB_API_KEY=your_keeper_key
 ```
 
-**Required Variables:**
-- `PRIVATE_KEY`: Your bot's wallet key.
-- `UNICHAIN_RPC_URL`: `https://sepolia.unichain.org`
-- `WRAITH_HOOK_ADDRESS`: The hook contract.
-- `GENSYN_API_KEY`: Your Gensyn credentials.
-- `KEEPER_HUB_API_KEY`: Your KeeperHub credentials.
+#### 2. Deploy using Render (Background Workers)
+Render is ideal for long-running agents. We use **Background Workers** to ensure the agents run 24/7 without exposing web ports.
 
----
+**Option A: Manual Setup**
+1. **New -> Background Worker** -> Connect your GitHub repo.
+2. **Name**: `wraith-sentinel`
+3. **Environment**: `Docker`
+4. **Dockerfile Path**: `Dockerfile.sentinel`
+5. **Environment Variables**: Add all variables from the "Setup Environment" section above.
+6. **Repeat** for `wraith-keeper` using `Dockerfile.keeper`.
 
-## 4. Deploying the Intelligence & Execution Agents (Docker)
-The agents must run 24/7. It is recommended to host them on a VPS (AWS, DigitalOcean, Hetzner) or a container platform (Railway, Render).
+**Option B: Blueprint (Recommended)**
+1. In your Render Dashboard, go to **Blueprints**.
+2. Connect your repo; Render will detect the `render.yaml` file automatically.
+3. It will provision both services and prompt you for the secret keys (`PRIVATE_KEY`, etc.).
 
-### Using Docker Compose (Recommended)
-1. Build and start the containers:
-   ```bash
-   docker-compose up -d --build
-   ```
-2. Monitor logs:
-   ```bash
-   docker logs -f wraith-keeper
-   docker logs -f wraith-sentinel
-   ```
-
-### Individual Containers
-If not using compose:
+#### 3. Deploy using Docker Compose (VPS)
+If you are using a standard VPS (Hetzner, DigitalOcean):
 ```bash
-# Build
-docker build -t wraith-sentinel -f Dockerfile.sentinel .
-docker build -t wraith-keeper -f Dockerfile.keeper .
-
-# Run
-docker run -d --env-file .env --name sentinel wraith-sentinel
-docker run -d --env-file .env --name keeper wraith-keeper
+docker-compose up -d --build
 ```
 
 ---
 
-## 5. Deploying the Frontend (Vercel)
-The dashboard is a Next.js application.
+## 3. Integration Details
 
-1. **Connect to GitHub**: Push your code to a GitHub repository.
-2. **Create Vercel Project**: Import the `frontend/` directory.
-3. **Configure Environment Variables**: Add the following in the Vercel dashboard:
-   - `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID`
-   - `WRAITH_HOOK_ADDRESS`
-   - `POOL_MANAGER_ADDRESS`
-4. **Deploy**: Vercel will automatically build and assign a URL.
+### Gensyn AEL (Intelligence)
+The Sentinel Agent uses Gensyn's **Bitwise Reproducible Execution Environment (REE)**. Every toxicity score submitted to the `WraithHook` is backed by a `proof_hash` stored in the agent logs for auditability.
+
+### KeeperHub (Execution)
+The Keeper Relay uses the **KeeperHub SDK** to submit bundles. This ensures that the LP's liquidity removal and swap occur atomically in a single block, protecting them from front-running or sandwich attacks during the rescue.
 
 ---
 
-## 6. Post-Deployment Verification
-Once live, verify the "Pulse" of the protocol:
-
-1. **Dashboard**: Connect your wallet and ensure your liquidity positions are visible.
-2. **Sentinel**: Check logs to ensure it's successfully submitting toxicity updates to the chain.
-3. **Keeper**: Ensure the polling loop is active:
-   `[Listener] Polling loop active ✓`
-4. **Flash-Rescue Test**: Run a manual toxicity update on a test pool and verify that the Keeper triggers the `triggerQuantumExit` transaction.
+## 4. Production Checklist ✅
+- [ ] **Contract Verification**: All contracts are verified on [Unichain Sepolia Blockscout](https://unichain-sepolia.blockscout.com/).
+- [ ] **Sentinel Uptime**: Verify logs show `[Sentinel] Monitoring mempool...`.
+- [ ] **Keeper Polling**: Verify logs show `[Listener] Polling loop active`.
+- [ ] **Gas Funding**: Ensure the Keeper wallet has enough ETH (Priority gas is required for Flash-Rescues).
+- [ ] **Approval**: Registered LPs must call `setOperator(wraith_hook, true)` on the PoolManager (handled in the dashboard).
 
 ---
 
-## 7. Maintenance
-- **Logs**: Check the `logs/` directory in the docker volume for detailed execution history.
-- **Proofs**: Successful rescues will save proofs to the `proofs/` directory.
-- **Funding**: Ensure the Keeper wallet always has enough ETH for gas.
+## 5. Maintenance & Monitoring
+- **Logs**: Monitor agent logs via `docker logs -f wraith-sentinel`.
+- **Health Checks**: We recommend setting up a heartbeat monitor (like UptimeRobot) for your RPC endpoint and Agent host.
+- **Toxicity Proofs**: Proofs for every critical event are saved to `/app/proofs` inside the Keeper container.
+
+---
+
+## 6. Free Hosting Alternatives 💸
+If you want to run the protocol with $0 infrastructure costs:
+
+### A. Oracle Cloud (Best Choice)
+Oracle offers "Always Free" ARM instances with 24GB RAM.
+1. Create an **Ubuntu 22.04 (ARM)** instance.
+2. Install Docker: `sudo apt update && sudo apt install docker.io docker-compose -y`.
+3. Clone your repo and run `docker-compose up -d`.
+
+### B. GCP e2-micro
+1. Create a VM in `us-central1`.
+2. Choose `e2-micro` (Free Tier).
+3. Run both agents on this single VM to stay within the 1-instance limit.
+
+### D. Hugging Face Spaces (Docker)
+Surprisingly, Hugging Face allows you to host Docker containers for free.
+1. Create a **Space** -> Choose **Docker**.
+2. Upload your files and set your `.env` variables in the **Settings > Secrets** section.
+3. It provides 16GB of RAM, which is massive for a free tier.
+
+### E. AWS Free Tier (1 Year)
+1. Sign up for AWS and launch a `t2.micro` or `t3.micro` instance.
+2. You get 750 hours/month for free for the first 12 months.
+3. This is a standard VPS that can run both agents via Docker.
+
+### F. Northflank
+Northflank offers a "Hobby" plan that includes 2 free services.
+1. Connect your GitHub.
+2. Create two "Services" (one for Sentinel, one for Keeper).
+3. Select "Docker" as the build source.
+
+---
+*Built for the Gensyn & KeeperHub Hackathon 2026.*

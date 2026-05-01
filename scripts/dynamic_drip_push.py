@@ -49,7 +49,8 @@ def get_commit_message(files):
         return "chore: general updates"
     
     # Clean file names for message
-    names = [os.path.basename(f) for f in files]
+    names = [os.path.basename(f.rstrip("/")) or os.path.basename(os.path.dirname(f)) for f in files]
+    names = [n for n in names if n] # Filter out empty strings
     
     if any("Dockerfile" in f or f == "docker-compose.yml" for f in files):
         return f"chore(docker): update containerization config: {', '.join(names)}"
@@ -60,7 +61,8 @@ def get_commit_message(files):
     if all(f.startswith("contracts/") for f in files):
         return f"feat(contracts): update core protocol contracts: {', '.join(names)}"
     if all(f.startswith("frontend/") for f in files):
-        return f"feat(frontend): UI enhancements for {', '.join(names)}"
+        category = "components" if any("components/" in f for f in files) else "UI"
+        return f"feat(frontend): {category} enhancements for {', '.join(names)}"
     if all(f.startswith("test/") for f in files):
         return f"test: update test suite: {', '.join(names)}"
     if all(f.startswith("scripts/") or f.startswith("script/") for f in files):
