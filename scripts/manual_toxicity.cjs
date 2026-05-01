@@ -22,7 +22,7 @@ async function main() {
   const scoreRaw = args[1].toLowerCase();
   const attacker = args[2] || ethers.ZeroAddress;
 
-  const rpcUrl = process.env.UNICHAIN_RPC_URL || "https://sepolia.unichain.org";
+  const rpcUrl = process.env.UNICHAIN_RPC_URL || "https://unichain-sepolia-rpc.publicnode.com";
   const provider = new ethers.JsonRpcProvider(rpcUrl);
   
   const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
@@ -76,10 +76,17 @@ async function main() {
     process.exit(1);
   }
 
+  const feeData = await provider.getFeeData();
+  const gasOverrides = {
+    maxPriorityFeePerGas: ethers.parseUnits("20", "gwei"),
+    maxFeePerGas: ethers.parseUnits("50", "gwei"),
+    gasLimit: 500000
+  };
+
   if (scoreRaw === "clear" || scoreRaw === "reset" || scoreRaw === "0") {
     console.log("\n[Sentinel] Clearing Toxicity Score...");
     try {
-      const tx = await contract.clearToxicity(poolKey, { gasLimit: 500000 });
+      const tx = await contract.clearToxicity(poolKey, gasOverrides);
       console.log(`[Sentinel] Transaction Sent: ${tx.hash}`);
       await tx.wait();
       console.log(`\n✅ SUCCESS! Toxicity cleared.`);
@@ -93,7 +100,7 @@ async function main() {
     const proofHash = ethers.keccak256(ethers.toUtf8Bytes(`Manual Update ${Date.now()}`));
     const attackers = attacker !== ethers.ZeroAddress ? [attacker] : [];
     try {
-      const tx = await contract.updateToxicity(poolKey, score, proofHash, attackers, { gasLimit: 500000 });
+      const tx = await contract.updateToxicity(poolKey, score, proofHash, attackers, gasOverrides);
       console.log(`[Sentinel] Transaction Sent: ${tx.hash}`);
       await tx.wait();
       console.log(`\n✅ SUCCESS! Score updated to ${score}.`);
