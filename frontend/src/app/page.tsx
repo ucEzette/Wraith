@@ -13,10 +13,10 @@ import {
   wraithHookConfig,
   POOL_MANAGER_ADDRESS,
   poolManagerConfig,
-} from "../lib/contracts";
+} from "@/lib/contracts";
 import { erc20Abi } from "viem";
-import { CommandTerminal } from "../components/CommandTerminal";
-import { AlertSystem, Alert } from "../components/AlertSystem";
+import { CommandTerminal } from "@/components/CommandTerminal";
+import { AlertSystem, Alert } from "@/components/AlertSystem";
 import { useRef } from "react";
 
 export default function DashboardPage() {

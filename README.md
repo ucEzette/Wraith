@@ -25,6 +25,18 @@ The Wraith system is a decentralized "Agent Guard" architecture composed of four
 4.  **Execution Layer (KeeperHub)**:
     -   **Flash-Rescue Bundles**: Executes atomic operations (Remove Liquidity -> Swap -> Vault Deposit) in a single block.
     -   **MEV Protection**: Submits bundles with high priority to ensure they execute before the attacker's transaction.
+---
+
+## ⛓️ Deployed Contracts (Unichain Sepolia)
+
+The protocol is live and verified on the Unichain Sepolia testnet:
+
+- **WraithHook**: [`0xD56388a4ce5Cd9E236201AD3DF27Edfbb28E0280`](https://unichain-sepolia.blockscout.com/address/0xD56388a4ce5Cd9E236201AD3DF27Edfbb28E0280)
+- **PoolManager**: `0x00B036B58a818B1BC34d502D3fE730Db729e62AC` (Uniswap v4 Singleton)
+- **WraithToken (WRAITH)**: [`0x9dA26648257a17bEB42d9464663b7b9Ce1c4f174`](https://unichain-sepolia.blockscout.com/address/0x9dA26648257a17bEB42d9464663b7b9Ce1c4f174)
+- **QuantumPhantom (QPHAN)**: [`0x9d803A3066C858d714C4F5eE286eaa6249d451aB`](https://unichain-sepolia.blockscout.com/address/0x9d803A3066C858d714C4F5eE286eaa6249d451aB)
+- **EternalEcho (ECHO)**: [`0x6586035D5e39e30bf37445451b43EEaEeAa1405a`](https://unichain-sepolia.blockscout.com/address/0x6586035D5e39e30bf37445451b43EEaEeAa1405a)
+- **Mock USDC**: [`0x31d0220469e10c4E71834a79b1f276d740d3768F`](https://unichain-sepolia.blockscout.com/address/0x31d0220469e10c4E71834a79b1f276d740d3768F)
 
 ---
 
