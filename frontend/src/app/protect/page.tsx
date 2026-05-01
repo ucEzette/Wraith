@@ -16,7 +16,7 @@ import {
   WRAITH_HOOK_ADDRESS,
   POOL_MANAGER_ADDRESS,
   poolManagerConfig,
-} from "../../lib/contracts";
+} from "@/lib/contracts";
 import { erc20Abi } from "viem";
 
 export default function ProtectPage() {

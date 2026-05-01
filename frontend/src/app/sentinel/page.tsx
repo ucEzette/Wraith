@@ -5,7 +5,7 @@ import Link from "next/link";
 
 import { useReadContract, useWatchContractEvent } from 'wagmi';
 import { useState, useEffect } from 'react';
-import { WRAITH_HOOK_ADDRESS, wraithHookConfig } from '../../lib/contracts';
+import { WRAITH_HOOK_ADDRESS, wraithHookConfig } from '@/lib/contracts';
 
 export default function SentinelPage() {
 
