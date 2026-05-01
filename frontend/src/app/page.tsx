@@ -2,22 +2,23 @@
 
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import Link from "next/link";
-import { useAccount } from "wagmi";
+import { 
+  useAccount, 
+  useReadContract, 
+  usePublicClient, 
+  useWriteContract 
+} from "wagmi";
 import { toast } from "react-hot-toast";
-
-import { useReadContract, usePublicClient, useWriteContract } from "wagmi";
-import { useState, useEffect } from "react";
-import { parseAbiItem } from "viem";
+import { useState, useEffect, useRef } from "react";
+import { parseAbiItem, erc20Abi } from "viem";
 import {
   WRAITH_HOOK_ADDRESS,
   wraithHookConfig,
   POOL_MANAGER_ADDRESS,
   poolManagerConfig,
 } from "@/lib/contracts";
-import { erc20Abi } from "viem";
 import { CommandTerminal } from "@/components/CommandTerminal";
 import { AlertSystem, Alert } from "@/components/AlertSystem";
-import { useRef } from "react";
 
 export default function DashboardPage() {
   const { address } = useAccount(); // Need to import useAccount too
