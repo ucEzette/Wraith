@@ -34,9 +34,69 @@ export const POOL_MANAGER_ABI = [
     outputs: [{ name: '', type: 'bool' }],
     stateMutability: 'view',
   },
+  {
+    type: 'function',
+    name: 'initialize',
+    inputs: [
+      {
+        name: 'key',
+        type: 'tuple',
+        components: [
+          { name: 'currency0', type: 'address' },
+          { name: 'currency1', type: 'address' },
+          { name: 'fee', type: 'uint24' },
+          { name: 'tickSpacing', type: 'int24' },
+          { name: 'hooks', type: 'address' },
+        ],
+      },
+      { name: 'sqrtPriceX96', type: 'uint160' },
+    ],
+    outputs: [{ name: 'tick', type: 'int24' }],
+    stateMutability: 'nonpayable',
+  },
 ] as const;
 
 export const poolManagerConfig = {
   address: POOL_MANAGER_ADDRESS as `0x${string}`,
   abi: POOL_MANAGER_ABI,
+};
+
+export const MODIFY_LIQUIDITY_TEST_ADDRESS = '0x5fa728C0A5cfd51BEe4B060773f50554c0C8A7AB';
+
+export const MODIFY_LIQUIDITY_TEST_ABI = [
+  {
+    type: 'function',
+    name: 'modifyLiquidity',
+    inputs: [
+      {
+        name: 'key',
+        type: 'tuple',
+        components: [
+          { name: 'currency0', type: 'address' },
+          { name: 'currency1', type: 'address' },
+          { name: 'fee', type: 'uint24' },
+          { name: 'tickSpacing', type: 'int24' },
+          { name: 'hooks', type: 'address' },
+        ],
+      },
+      {
+        name: 'params',
+        type: 'tuple',
+        components: [
+          { name: 'tickLower', type: 'int24' },
+          { name: 'tickUpper', type: 'int24' },
+          { name: 'liquidityDelta', type: 'int256' },
+          { name: 'salt', type: 'bytes32' },
+        ],
+      },
+      { name: 'hookData', type: 'bytes' },
+    ],
+    outputs: [{ name: '', type: 'int256' }],
+    stateMutability: 'payable',
+  },
+] as const;
+
+export const modifyLiquidityTestConfig = {
+  address: MODIFY_LIQUIDITY_TEST_ADDRESS as `0x${string}`,
+  abi: MODIFY_LIQUIDITY_TEST_ABI,
 };

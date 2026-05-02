@@ -49,6 +49,7 @@ export default function SentinelPage() {
       <span className="material-symbols-outlined text-[16px]">help</span>
       How it Works
     </Link>
+    <Link className="text-slate-400 hover:text-cyan-200 pb-1 hover:bg-cyan-400/10 hover:shadow-[0_0_15px_rgba(0,240,255,0.3)] transition-all duration-300" href="/liquidity">Liquidity</Link>
   </div>
 </div>
 <div className="flex items-center gap-md">
@@ -61,7 +62,7 @@ export default function SentinelPage() {
 </button>
 </div>
 <div className="text-slate-400">Unichain Sepolia</div>
-<ConnectButton />
+<ConnectButton chainStatus="icon" showBalance={false} />
 </div>
 </nav>
 {/* Main Content Canvas */}
