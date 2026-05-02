@@ -243,9 +243,10 @@ export default function ProtectPage() {
               <span className="material-symbols-outlined text-[16px]">help</span>
               How it Works
             </Link>
+            <Link className="text-slate-400 hover:text-cyan-400" href="/liquidity">Liquidity</Link>
           </nav>
         </div>
-        <ConnectButton />
+        <ConnectButton chainStatus="icon" showBalance={false} />
       </header>
 
       <main className="max-w-[1440px] mx-auto pt-12 pb-24 px-12 grid grid-cols-12 gap-8">
