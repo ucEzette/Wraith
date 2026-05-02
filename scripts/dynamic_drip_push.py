@@ -65,6 +65,8 @@ def get_commit_message(files):
         return f"feat(frontend): {category} enhancements for {', '.join(names)}"
     if all(f.startswith("test/") for f in files):
         return f"test: update test suite: {', '.join(names)}"
+    if any("assets/" in f for f in files):
+        return f"style(assets): update project assets and media: {', '.join(names)}"
     if all(f.startswith("scripts/") or f.startswith("script/") for f in files):
         return f"chore(scripts): update automation utilities: {', '.join(names)}"
     
