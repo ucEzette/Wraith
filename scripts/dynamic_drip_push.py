@@ -66,6 +66,10 @@ def get_commit_message(files):
         return f"style(frontend): update global styles and design system: {', '.join(names)}"
     if any("assets/" in f for f in files):
         return f"style(assets): update project assets and media: {', '.join(names)}"
+    if all(f.startswith("frontend/src/lib/") for f in files):
+        return f"feat(frontend): update contract abstractions and library: {', '.join(names)}"
+    if any("liquidity" in f for f in files):
+        return f"feat(frontend): implement liquidity management routes: {', '.join(names)}"
     if all(f.startswith("frontend/") for f in files):
         category = "components" if any("components/" in f for f in files) else "UI"
         return f"feat(frontend): {category} enhancements for {', '.join(names)}"
