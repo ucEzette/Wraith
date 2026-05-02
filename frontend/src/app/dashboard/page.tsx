@@ -751,6 +751,12 @@ export default function DashboardPage() {
               <span className="material-symbols-outlined text-[16px]">help</span>
               How it Works
             </Link>
+            <Link
+              className="text-slate-400 hover:text-cyan-200 pb-1 hover:bg-cyan-400/10 hover:shadow-[0_0_15px_rgba(0,240,255,0.3)] transition-all duration-300"
+              href="/liquidity"
+            >
+              Liquidity
+            </Link>
           </div>
         </div>
         {/* Trailing Actions */}
@@ -784,7 +790,7 @@ export default function DashboardPage() {
             </span>
           </div>
           <div className="hidden md:flex items-center gap-md">
-            <ConnectButton />
+            <ConnectButton chainStatus="icon" showBalance={false} />
           </div>
         </div>
       </nav>

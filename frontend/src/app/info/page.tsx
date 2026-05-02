@@ -24,13 +24,14 @@ export default function HowItWorks() {
               <Link className="text-slate-400 hover:text-white transition-all" href="/dashboard">Dashboard</Link>
               <Link className="text-slate-400 hover:text-white transition-all" href="/protect">Protection</Link>
               <Link className="text-slate-400 hover:text-white transition-all" href="/sentinel">Sentinel</Link>
+              <Link className="text-slate-400 hover:text-white transition-all" href="/liquidity">Liquidity</Link>
               <Link className="text-cyan-400 flex items-center gap-2" href="/info">
                 <span className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-pulse"></span>
                 How it Works
               </Link>
             </nav>
           </div>
-          <ConnectButton />
+          <ConnectButton chainStatus="icon" showBalance={false} />
         </div>
       </header>
 
