@@ -20,7 +20,8 @@ export default function HowItWorks() {
               <span className="ml-2 px-1.5 py-0.5 bg-cyan-500/10 text-cyan-400 text-[10px] font-bold rounded border border-cyan-500/20">V1.0</span>
             </Link>
             <nav className="hidden md:flex gap-8 font-mono tracking-wider uppercase text-[11px] font-medium">
-              <Link className="text-slate-400 hover:text-white transition-all" href="/">Dashboard</Link>
+              <Link className="text-slate-400 hover:text-white transition-all" href="/">Home</Link>
+              <Link className="text-slate-400 hover:text-white transition-all" href="/dashboard">Dashboard</Link>
               <Link className="text-slate-400 hover:text-white transition-all" href="/protect">Protection</Link>
               <Link className="text-slate-400 hover:text-white transition-all" href="/sentinel">Sentinel</Link>
               <Link className="text-cyan-400 flex items-center gap-2" href="/info">

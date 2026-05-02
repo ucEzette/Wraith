@@ -63,13 +63,13 @@
   --radius-xl: 0.75rem;
   --radius-full: 9999px;
 
-  --font-label-caps: Space Grotesk, sans-serif;
-  --font-mono-data: Space Grotesk, monospace;
-  --font-body-lg: Inter, sans-serif;
-  --font-headline-md: Inter, sans-serif;
-  --font-display-xl: Inter, sans-serif;
-  --font-body-md: Inter, sans-serif;
-  --font-headline-lg: Inter, sans-serif;
+  --font-label-caps: var(--font-space), sans-serif;
+  --font-mono-data: var(--font-space), monospace;
+  --font-body-lg: var(--font-inter), sans-serif;
+  --font-headline-md: var(--font-space), sans-serif;
+  --font-display-xl: var(--font-space), sans-serif;
+  --font-body-md: var(--font-inter), sans-serif;
+  --font-headline-lg: var(--font-space), sans-serif;
   
   /* Text styles using Tailwind CSS v4 variables might need different handling, but we map to font families */
 }
@@ -78,6 +78,11 @@
   body {
     background-color: var(--color-background);
     color: var(--color-on-background);
+    font-family: var(--font-inter), sans-serif;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-space), sans-serif;
   }
 }
 
