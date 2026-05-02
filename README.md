@@ -2,6 +2,8 @@
 
 **Wraith Protocol** is a decentralized "Agent Guard" architecture designed to protect Liquidity Providers (LPs) . It leverages **Gensyn's Verifiable Compute (AEL)** and **AXL Mesh Networking** to detect malicious patterns in real-time and trigger atomic **KeeperHub Flash-Rescues** before rug-pulls are finalized.
 
+![Wraith Protocol Architecture](assets/protocol_architecture.png)
+
 ---
 
 ## 🏛️ System Architecture
@@ -127,6 +129,12 @@ Once toxicity is high, the "Quantum Exit" becomes available for registered LPs.
 - **AXL Agent Mesh**: Encrypted P2P (Agent-to-Agent) communication layer.
 - **KeeperHub**: Decentralized reliability layer for atomic flash-rescue bundles.
 
+
 ---
 
-*Built for the Gensyn & KeeperHub Hackathon 2026.*
+### 📊 Summary & Presentation
+Below is a high-level technical memo summarizing the core defense pipeline of the Wraith Protocol.
+
+![Wraith Protocol Technical Memo](assets/protocol_memo_slide.png)
+
+*Protecting the future of DeFi with Verifiable AI. Built for the Gensyn & KeeperHub Hackathon 2026.*
