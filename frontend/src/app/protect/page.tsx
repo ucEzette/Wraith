@@ -232,9 +232,12 @@ export default function ProtectPage() {
       <div className="scanlines"></div>
       <header className="bg-slate-950/60 backdrop-blur-md border-b border-white/10 sticky top-0 z-[100] h-20 px-12 flex justify-between items-center max-w-[1440px] mx-auto w-full">
         <div className="flex items-center gap-8">
-          <img src="/logo.png" alt="Logo" className="h-12 w-auto" />
+          <Link href="/">
+            <img src="/logo.png" alt="Logo" className="h-12 w-auto cursor-pointer" />
+          </Link>
           <nav className="flex gap-6 font-bold uppercase text-xs tracking-widest">
-            <Link className="text-slate-400 hover:text-cyan-400" href="/">Dashboard</Link>
+            <Link className="text-slate-400 hover:text-cyan-400" href="/">Home</Link>
+            <Link className="text-slate-400 hover:text-cyan-400" href="/dashboard">Dashboard</Link>
             <Link className="text-cyan-400 border-b border-cyan-400 pb-1" href="/protect">Protection</Link>
             <Link className="text-slate-400 hover:text-cyan-400 flex items-center gap-1" href="/info">
               <span className="material-symbols-outlined text-[16px]">help</span>
@@ -277,6 +280,25 @@ export default function ProtectPage() {
               )}
             </div>
             <input className="bg-transparent border-none outline-none font-mono text-xs w-full" type="text" placeholder="0x..." value={newVault} onChange={(e) => setNewVault(e.target.value)} />
+          </div>
+
+          <div className="bg-slate-950/40 p-4 rounded-xl border border-white/5">
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-3">PAYOUT CURRENCY</label>
+            <div className="grid grid-cols-3 gap-3">
+              {Object.keys(STABLE_TOKENS).map((symbol) => (
+                <button
+                  key={symbol}
+                  onClick={() => setRescueAsset(symbol)}
+                  className={`py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest border transition-all ${
+                    rescueAsset === symbol
+                      ? "bg-cyan-500/20 border-cyan-500 text-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.3)]"
+                      : "bg-slate-900 border-white/5 text-slate-500 hover:border-white/20"
+                  }`}
+                >
+                  {symbol}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="bg-slate-950/40 p-4 rounded-xl border border-white/5">
