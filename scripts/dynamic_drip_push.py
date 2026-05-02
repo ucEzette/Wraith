@@ -60,13 +60,17 @@ def get_commit_message(files):
         return f"feat(agents): update sentinel monitoring and toxicity logic ({', '.join(names)})"
     if all(f.startswith("contracts/") for f in files):
         return f"feat(contracts): update core protocol contracts: {', '.join(names)}"
+    if any("moodboard" in f for f in files):
+        return f"style(brand): add project moodboards and brand assets: {', '.join(names)}"
+    if any("globals.css" in f for f in files):
+        return f"style(frontend): update global styles and design system: {', '.join(names)}"
+    if any("assets/" in f for f in files):
+        return f"style(assets): update project assets and media: {', '.join(names)}"
     if all(f.startswith("frontend/") for f in files):
         category = "components" if any("components/" in f for f in files) else "UI"
         return f"feat(frontend): {category} enhancements for {', '.join(names)}"
     if all(f.startswith("test/") for f in files):
         return f"test: update test suite: {', '.join(names)}"
-    if any("assets/" in f for f in files):
-        return f"style(assets): update project assets and media: {', '.join(names)}"
     if all(f.startswith("scripts/") or f.startswith("script/") for f in files):
         return f"chore(scripts): update automation utilities: {', '.join(names)}"
     

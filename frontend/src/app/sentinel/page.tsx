@@ -37,18 +37,19 @@ export default function SentinelPage() {
 {/* Top Navigation */}
 <nav className="fixed top-0 left-0 w-full z-[100] flex justify-between items-center px-12 h-20 max-w-container-max mx-auto bg-slate-950/60 backdrop-blur-md font-sans tracking-widest uppercase text-xs font-bold border-b-[0.5px] border-white/10 shadow-[0_4px_30px_rgba(0,0,0,0.1)]">
 <div className="flex items-center gap-lg">
-<div className="text-2xl font-black tracking-tighter text-cyan-400 drop-shadow-[0_0_8px_rgba(0,240,255,0.5)]">
-                WRAITH
-            </div>
-<div className="hidden md:flex items-center gap-md h-full">
-<Link className="text-slate-400 hover:text-cyan-200 pb-1 hover:bg-cyan-400/10 hover:shadow-[0_0_15px_rgba(0,240,255,0.3)] transition-all duration-300" href="/">Dashboard</Link>
-<Link className="text-slate-400 hover:text-cyan-200 pb-1 hover:bg-cyan-400/10 hover:shadow-[0_0_15px_rgba(0,240,255,0.3)] transition-all duration-300" href="/protect">Protection</Link>
-<Link className="text-cyan-400 border-b border-cyan-400 pb-1 transition-all" href="/sentinel">Sentinel</Link>
-<Link className="text-slate-400 hover:text-cyan-200 pb-1 hover:bg-cyan-400/10 hover:shadow-[0_0_15px_rgba(0,240,255,0.3)] transition-all duration-300 flex items-center gap-1" href="/info">
-  <span className="material-symbols-outlined text-[16px]">help</span>
-  How it Works
-</Link>
-</div>
+  <Link href="/" className="text-2xl font-black tracking-tighter text-cyan-400 drop-shadow-[0_0_8px_rgba(0,240,255,0.5)] cursor-pointer hover:text-cyan-200 transition-all">
+    WRAITH
+  </Link>
+  <div className="hidden md:flex items-center gap-md h-full">
+    <Link className="text-slate-400 hover:text-cyan-200 pb-1 hover:bg-cyan-400/10 hover:shadow-[0_0_15px_rgba(0,240,255,0.3)] transition-all duration-300" href="/">Home</Link>
+    <Link className="text-slate-400 hover:text-cyan-200 pb-1 hover:bg-cyan-400/10 hover:shadow-[0_0_15px_rgba(0,240,255,0.3)] transition-all duration-300" href="/dashboard">Dashboard</Link>
+    <Link className="text-slate-400 hover:text-cyan-200 pb-1 hover:bg-cyan-400/10 hover:shadow-[0_0_15px_rgba(0,240,255,0.3)] transition-all duration-300" href="/protect">Protection</Link>
+    <Link className="text-cyan-400 border-b border-cyan-400 pb-1 transition-all" href="/sentinel">Sentinel</Link>
+    <Link className="text-slate-400 hover:text-cyan-200 pb-1 hover:bg-cyan-400/10 hover:shadow-[0_0_15px_rgba(0,240,255,0.3)] transition-all duration-300 flex items-center gap-1" href="/info">
+      <span className="material-symbols-outlined text-[16px]">help</span>
+      How it Works
+    </Link>
+  </div>
 </div>
 <div className="flex items-center gap-md">
 <div className="hidden md:flex gap-sm">
