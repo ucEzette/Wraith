@@ -40,9 +40,7 @@ export default function LiquidityPage() {
   
   const [tickLower, setTickLower] = useState("-600");
   const [tickUpper, setTickUpper] = useState("600");
-  const [liquidityDelta, setLiquidityDelta] = useState("1000000000000000000"); // Under the hood delta
-  const [amount0, setAmount0] = useState("1");
-  const [amount1, setAmount1] = useState("1");
+  const [liquidityDelta, setLiquidityDelta] = useState("1000000"); // Start with a safe 6-decimal scale delta
 
   const [isLoading, setIsLoading] = useState(false);
   const [txHistory, setTxHistory] = useState<Array<{hash: string, type: string, timestamp: number}>>([]);
@@ -336,33 +334,17 @@ export default function LiquidityPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                <div>
-                  <label className="text-xs text-cyan-400 uppercase tracking-widest font-bold">Token 0 Amount</label>
-                  <input 
-                    type="text" 
-                    value={amount0}
-                    onChange={(e) => {
-                      setAmount0(e.target.value);
-                      setAmount1(e.target.value); // Sync 1:1 for pool initial setup
-                      try { setLiquidityDelta(parseUnits(e.target.value || "0", 18).toString()); } catch(e){}
-                    }}
-                    className="w-full mt-1 bg-black/50 border border-white/10 rounded-md p-3 text-white font-mono text-sm focus:border-cyan-400 focus:outline-none transition-all"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs text-cyan-400 uppercase tracking-widest font-bold">Token 1 Amount</label>
-                  <input 
-                    type="text" 
-                    value={amount1}
-                    onChange={(e) => {
-                      setAmount1(e.target.value);
-                      setAmount0(e.target.value); // Sync 1:1 for pool initial setup
-                      try { setLiquidityDelta(parseUnits(e.target.value || "0", 18).toString()); } catch(e){}
-                    }}
-                    className="w-full mt-1 bg-black/50 border border-white/10 rounded-md p-3 text-white font-mono text-sm focus:border-cyan-400 focus:outline-none transition-all"
-                  />
-                </div>
+              <div className="mb-6">
+                <label className="text-xs text-cyan-400 uppercase tracking-widest font-bold">Liquidity Amount (Raw Delta)</label>
+                <input 
+                  type="text" 
+                  value={liquidityDelta}
+                  onChange={(e) => setLiquidityDelta(e.target.value)}
+                  className="w-full mt-1 bg-black/50 border border-white/10 rounded-md p-3 text-white font-mono text-sm focus:border-cyan-400 focus:outline-none transition-all"
+                />
+                <p className="text-[10px] text-slate-500 font-mono mt-1">
+                  Because USDC has 6 decimals and WRAITH has 18, use a smaller delta (e.g., 1000000) to avoid exceeding your USDC balance.
+                </p>
               </div>
 
               <button 
