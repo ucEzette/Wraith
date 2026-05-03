@@ -141,7 +141,7 @@ export default function DashboardPage() {
   };
 
   const getRegistryName = (id: string) => {
-    return registry[id.toLowerCase()];
+    return POOL_REGISTRY[id.toLowerCase()];
   };
 
   const getStorageKey = () =>
