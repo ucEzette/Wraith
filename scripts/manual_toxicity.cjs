@@ -40,28 +40,28 @@ async function main() {
   const contract = new ethers.Contract(hookAddress, abi, wallet);
 
   const REGISTRY = {
-    "0x03618863b55d252f844d7340696d688ad6a75a36f9c457864c2c812913d4f71d": {
+    "0x7233e7e2e9c7f1eff9ae03a8850324db64d71ae40b39d51a20c005e200ab1915": {
         currency0: "0x0000000000000000000000000000000000000000", // ETH
         currency1: "0x31d0220469e10c4E71834a79b1f276d740d3768F", // USDC
         fee: 3000,
         tickSpacing: 60,
         hooks: hookAddress
     },
-    "0x8e4f19a74db728c2730a70f7f79c85729a5b4da55002325bf326c8ccf2ee592e": {
+    "0xdafa310b1b0cda3038d2669884e1718fc32c1a6aa272003a6bc8a0f3ecf7617e": {
         currency0: "0x31d0220469e10c4E71834a79b1f276d740d3768F", // USDC
-        currency1: "0x9d803A3066C858d714C4F5eE286eaa6249d451aB", // QPHAN
+        currency1: "0x9d803A3066C858d714C4F5eE286eaa6249D451aB", // QPHAN
         fee: 3000,
         tickSpacing: 60,
         hooks: hookAddress
     },
-    "0x6d9ebd08d2345973bc25681e33f3caff20da3e4bd01f805a29613550a2c09d5d": {
+    "0xf2e655c55c811222ea6232741a8715879e1255b484d276ab6e1e50c293392123": {
         currency0: "0x31d0220469e10c4E71834a79b1f276d740d3768F", // USDC
         currency1: "0x6586035D5e39e30bf37445451b43EEaEeAa1405a", // ECHO
         fee: 3000,
         tickSpacing: 60,
         hooks: hookAddress
     },
-    "0x17127262623682e634a753a2b4744f3199cc010d87e05f593c3f4e42f0e3bfe3": {
+    "0x931ed6780e94aa42fc3a93681f797c52988fe76e58712666ee960d3913199cff": {
         currency0: "0x31d0220469e10c4E71834a79b1f276d740d3768F", // USDC
         currency1: "0x9dA26648257a17bEB42d9464663b7b9Ce1c4f174", // WRAITH
         fee: 3000,

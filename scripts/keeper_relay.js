@@ -31,8 +31,8 @@ const CONFIG = {
   chainId: parseInt(process.env.CHAIN_ID || "1"),
 
   // Contracts
-  wraithHook: process.env.WRAITH_HOOK_ADDRESS || "",
-  poolManager: process.env.POOL_MANAGER_ADDRESS || "",
+  wraithHook: process.env.WRAITH_HOOK_ADDRESS || "0x83cabbF63Cbe0b7EaF14824F4C7529480fAC8280",
+  poolManager: process.env.POOL_MANAGER_ADDRESS || "0x00B036B58a818B1BC34d502D3fE730Db729e62AC",
   universalRouter: process.env.UNIVERSAL_ROUTER_ADDRESS || "",
 
   // Safe assets
@@ -51,19 +51,12 @@ const CONFIG = {
   // Keeper wallet
   keeperPrivateKey: process.env.PRIVATE_KEY || "",
 
-  // Timing
-  pollIntervalMs: 2000,
-  maxGasPrice: ethers.parseUnits("100", "gwei"),
-  rescueDeadlineSeconds: 120,
-
-  // AXL / P2P Configuration
-  axlProxyUrl: process.env.KEEPER_AXL_URL || "http://localhost:8001",
-  axlPollIntervalMs: 1000,
+  // Mesh P2P
+  axlProxyUrl: process.env.AXL_PROXY_URL || "http://localhost:8001",
+  axlPollIntervalMs: 5000,
+  eventPollIntervalMs: 2000,
+  minRescueScore: 8500, // Trigger rescue if toxicity >= 85%
 };
-
-// ══════════════════════════════════════════════════════════════
-//                        ABIs
-// ══════════════════════════════════════════════════════════════
 
 const WRAITH_HOOK_ABI = [
   "event ToxicityUpdated(bytes32 indexed poolId, uint256 score, bytes32 proofHash)",
@@ -82,46 +75,46 @@ const WRAITH_HOOK_ABI = [
 
 // Pool Registry for resolving PoolId -> PoolKey
 const POOL_REGISTRY = {
-  // ETH / USDC
-  "0x03618863b55d252f844d7340696d688ad6a75a36f9c457864c2c812913d4f71d": {
-    currency0: "0x0000000000000000000000000000000000000000",
-    currency1: "0x31d0220469e10c4E71834a79b1f276d740d3768F",
-    fee: 3000,
-    tickSpacing: 60,
-    hooks: CONFIG.wraithHook,
-  },
-  // WETH / USDC
-  "0x8a001f8bbe4ca36d56a05e670ebd99fb684e6b1a87a2daa3b2292e1d8d775721": {
-    currency0: "0x31d0220469e10c4E71834a79b1f276d740d3768F",
-    currency1: "0x4200000000000000000000000000000000000006",
-    fee: 3000,
-    tickSpacing: 60,
-    hooks: CONFIG.wraithHook,
-  },
-  // QPHAN / USDC
-  "0x8e4f19a74db728c2730a70f7f79c85729a5b4da55002325bf326c8ccf2ee592e": {
-    currency0: "0x31d0220469e10c4E71834a79b1f276d740d3768F",
-    currency1: "0x9d803A3066C858d714C4F5eE286eaa6249d451aB",
-    fee: 3000,
-    tickSpacing: 60,
-    hooks: CONFIG.wraithHook,
-  },
-  // ECHO / USDC
-  "0x6d9ebd08d2345973bc25681e33f3caff20da3e4bd01f805a29613550a2c09d5d": {
-    currency0: "0x31d0220469e10c4E71834a79b1f276d740d3768F",
-    currency1: "0x6586035D5e39e30bf37445451b43EEaEeAa1405a",
-    fee: 3000,
-    tickSpacing: 60,
-    hooks: CONFIG.wraithHook,
-  },
   // WRAITH / USDC
-  "0x17127262623682e634a753a2b4744f3199cc010d87e05f593c3f4e42f0e3bfe3": {
+  "0x931ed6780e94aa42fc3a93681f797c52988fe76e58712666ee960d3913199cff": {
     currency0: "0x31d0220469e10c4E71834a79b1f276d740d3768F",
     currency1: "0x9dA26648257a17bEB42d9464663b7b9Ce1c4f174",
     fee: 3000,
     tickSpacing: 60,
-    hooks: CONFIG.wraithHook,
+    hooks: CONFIG.wraithHook
   },
+  // QPHAN / USDC
+  "0xdafa310b1b0cda3038d2669884e1718fc32c1a6aa272003a6bc8a0f3ecf7617e": {
+    currency0: "0x31d0220469e10c4E71834a79b1f276d740d3768F",
+    currency1: "0x9d803A3066C858d714C4F5eE286eaa6249D451aB",
+    fee: 3000,
+    tickSpacing: 60,
+    hooks: CONFIG.wraithHook
+  },
+  // ECHO / USDC
+  "0xf2e655c55c811222ea6232741a8715879e1255b484d276ab6e1e50c293392123": {
+    currency0: "0x31d0220469e10c4E71834a79b1f276d740d3768F",
+    currency1: "0x6586035D5e39e30bf37445451b43EEaEeAa1405a",
+    fee: 3000,
+    tickSpacing: 60,
+    hooks: CONFIG.wraithHook
+  },
+  // WETH / USDC
+  "0x129a7e735ef695ae9ef143e2a2e4efab57630ab31ae7c11a404c6ebe0cd04051": {
+    currency0: "0x31d0220469e10c4E71834a79b1f276d740d3768F",
+    currency1: "0x4200000000000000000000000000000000000006",
+    fee: 3000,
+    tickSpacing: 60,
+    hooks: CONFIG.wraithHook
+  },
+  // ETH / USDC
+  "0x7233e7e2e9c7f1eff9ae03a8850324db64d71ae40b39d51a20c005e200ab1915": {
+    currency0: "0x0000000000000000000000000000000000000000",
+    currency1: "0x31d0220469e10c4E71834a79b1f276d740d3768F",
+    fee: 3000,
+    tickSpacing: 60,
+    hooks: CONFIG.wraithHook
+  }
 };
 
 const POOL_MANAGER_ABI = [
