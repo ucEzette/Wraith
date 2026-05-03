@@ -525,6 +525,9 @@ class KeeperRelay {
           const users = await hookContract.getWraithGuardUsers();
           console.log(`[Relay] Found ${users.length} registered users on-chain.`);
 
+          // Pre-fetch nonce to allow rapid sequential transactions
+          let currentNonce = await this.wallet.getNonce();
+
           // 3. Trigger exits for users who opted in
           for (const user of users) {
             const autoExit = await hookContract.userAutoExit(user);
@@ -532,12 +535,11 @@ class KeeperRelay {
             
             if (autoExit) {
               console.log(`[Relay] ⚡ TRIGGERING QUANTUM EXIT for ${user}...`);
-              const tx = await hookContract.triggerQuantumExit(poolKey, user, { gasLimit: 500000 });
+              const tx = await hookContract.triggerQuantumExit(poolKey, user, { 
+                gasLimit: 500000,
+                nonce: currentNonce++ // Increment nonce for the next tx immediately
+              });
               console.log(`[Relay] Transaction Sent! Hash: ${tx.hash}`);
-              
-              // Optional: wait for confirmation to ensure it emitted the Triggered event
-              // const receipt = await tx.wait();
-              // console.log(`[Relay] Trigger confirmed in block ${receipt.blockNumber}`);
             }
           }
         } catch (error) {
