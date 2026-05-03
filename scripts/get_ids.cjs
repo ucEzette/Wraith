@@ -1,6 +1,6 @@
 const { ethers } = require("ethers");
 
-const HOOK = "0x62B207729023CD2544a5BE6791f1bb77fb2cc280".toLowerCase();
+const HOOK = "0x83cabbF63Cbe0b7EaF14824F4C7529480fAC8280".toLowerCase();
 const USDC = "0x31d0220469e10c4E71834a79b1f276d740d3768F".toLowerCase();
 const WETH = "0x4200000000000000000000000000000000000006".toLowerCase();
 const QPHAN = "0x9d803A3066C858d714C4F5eE286eaa6249d451aB".toLowerCase();
