@@ -27,8 +27,8 @@ contract MineSalt is Script {
         uint160 targetMask = 0x3FFF;
         uint160 targetBits = 0x280;
 
-        console.log("Mining for 0x280 suffix...");
-        for (uint256 i = 0; i < 5000000; i++) {
+        console.log("Mining for 0x280 suffix starting from 8000...");
+        for (uint256 i = 8000; i < 5000000; i++) {
             bytes32 salt = bytes32(i);
             address hookAddress = address(uint160(uint256(keccak256(abi.encodePacked(
                 bytes1(0xff),
