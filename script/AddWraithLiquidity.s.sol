@@ -23,7 +23,7 @@ contract AddWraithLiquidity is Script {
     address constant MODIFY_LIQUIDITY_TEST = 0x5fa728C0A5cfd51BEe4B060773f50554c0C8A7AB;
     address constant USDC   = 0x31d0220469e10c4E71834a79b1f276d740d3768F;
     address constant WRAITH = 0x9dA26648257a17bEB42d9464663b7b9Ce1c4f174;
-    address constant HOOK   = 0x62B207729023CD2544a5BE6791f1bb77fb2cc280;
+    address constant HOOK   = 0x83cabbF63Cbe0b7EaF14824F4C7529480fAC8280;
 
     function run() public {
         uint256 pk = vm.envUint("PRIVATE_KEY");
