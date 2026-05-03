@@ -14,7 +14,7 @@ contract SeedPools is Script {
     using PoolIdLibrary for PoolKey;
 
     address constant POOL_MANAGER = 0x403164a66a157e84F39a04a80695B44673D5E4D9;
-    address constant HOOK = 0xD56388a4ce5Cd9E236201AD3DF27Edfbb28E0280;
+    address constant HOOK = 0x62B207729023CD2544a5BE6791f1bb77fb2cc280;
     
     address constant USDC = 0x06Afd270830607994D5a12248443B1f531393A22;
     address constant WETH = 0x4200000000000000000000000000000000000006;

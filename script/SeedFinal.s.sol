@@ -29,7 +29,7 @@ contract SeedFinal is Script {
     address constant QPHAN = 0x9d803A3066C858d714c4F5eE286eaa6249d451aB;
     address constant ECHO = 0x6586035D5e39e30bf37445451b43EEaEeAa1405a;
     address constant WRAITH = 0x9dA26648257a17bEB42d9464663b7b9Ce1c4f174;
-    address constant HOOK = 0xD56388a4ce5Cd9E236201AD3DF27Edfbb28E0280;
+    address constant HOOK = 0x62B207729023CD2544a5BE6791f1bb77fb2cc280;
 
     function run() public {
         uint256 pk = vm.envUint("PRIVATE_KEY");
