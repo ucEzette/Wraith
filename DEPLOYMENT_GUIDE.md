@@ -20,7 +20,7 @@ This guide details the step-by-step process for deploying the Wraith Protocol in
 ### A. Frontend Dashboard (Vercel) — [COMPLETE]
 The frontend is already deployed on Vercel. Ensure the following **Environment Variables** are configured in the Vercel dashboard:
 - `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID`: Your project ID.
-- `WRAITH_HOOK_ADDRESS`: `0x62B207729023CD2544a5BE6791f1bb77fb2cc280`
+- `WRAITH_HOOK_ADDRESS`: `0x83cabbF63Cbe0b7EaF14824F4C7529480fAC8280`
 - `POOL_MANAGER_ADDRESS`: `0x00B036B58a818B1BC34d502D3fE730Db729e62AC`
 
 ### B. Intelligence & Execution Agents (Railway / Render / VPS)
@@ -31,7 +31,7 @@ Create a `.env` on your hosting provider with:
 ```bash
 PRIVATE_KEY=your_key_here
 UNICHAIN_RPC_URL=https://sepolia.unichain.org
-WRAITH_HOOK_ADDRESS=0x62B207729023CD2544a5BE6791f1bb77fb2cc280
+WRAITH_HOOK_ADDRESS=0x83cabbF63Cbe0b7EaF14824F4C7529480fAC8280
 GENSYN_API_KEY=your_gensyn_key
 KEEPER_HUB_API_KEY=your_keeper_key
 ```
