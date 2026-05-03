@@ -74,7 +74,7 @@ const WRAITH_HOOK_ABI = [
   "function isWraithGuard(address) view returns (bool)",
   "function userVaults(address) view returns (address)",
   "function maliceProofs(bytes32) view returns (bytes32)",
-  "function executeQuantumRescue(tuple(address currency0, address currency1, uint24 fee, int24 tickSpacing, address hooks) key, address user) external",
+  "function executeQuantumRescue(tuple(address currency0, address currency1, uint24 fee, int24 tickSpacing, address hooks) key, int24 tickLower, int24 tickUpper, int256 liquidityDelta, address user) external",
   "function triggerQuantumExit(tuple(address currency0, address currency1, uint24 fee, int24 tickSpacing, address hooks) key, address user) external",
   "function getWraithGuardUsers() external view returns (address[])",
   "function userAutoExit(address) view returns (bool)",
@@ -82,34 +82,46 @@ const WRAITH_HOOK_ABI = [
 
 // Pool Registry for resolving PoolId -> PoolKey
 const POOL_REGISTRY = {
-  "0x7a207acaddeb221078ce37512f88e050c2bceecc95f5e7ae7527830b8e0e5734": {
-    currency0: "0x31d0220469e10c4E71834a79b1f276d740d3768F", // USDC
-    currency1: "0x4200000000000000000000000000000000000006", // WETH
+  // ETH / USDC
+  "0x03618863b55d252f844d7340696d688ad6a75a36f9c457864c2c812913d4f71d": {
+    currency0: "0x0000000000000000000000000000000000000000",
+    currency1: "0x31d0220469e10c4E71834a79b1f276d740d3768F",
     fee: 3000,
     tickSpacing: 60,
     hooks: CONFIG.wraithHook,
   },
-  "0xa869e4cae78878d6a85917f3e3556c307c18c8e6d1112d04625f16ff77655b2f": {
-    currency0: "0x31d0220469e10c4E71834a79b1f276d740d3768F", // USDC
-    currency1: "0x9d803A3066C858d714C4F5eE286eaa6249D451aB", // QPHAN
+  // WETH / USDC
+  "0x8a001f8bbe4ca36d56a05e670ebd99fb684e6b1a87a2daa3b2292e1d8d775721": {
+    currency0: "0x31d0220469e10c4E71834a79b1f276d740d3768F",
+    currency1: "0x4200000000000000000000000000000000000006",
     fee: 3000,
     tickSpacing: 60,
     hooks: CONFIG.wraithHook,
   },
-  "0xafd44b0172fc530c071d599a1832e335e9e4444eb03cdbe6e10b7c584e383a45": {
-    currency0: "0x31d0220469e10c4E71834a79b1f276d740d3768F", // USDC
-    currency1: "0x6586035D5e39e30bf37445451b43EEaEeAa1405a", // ECHO
+  // QPHAN / USDC
+  "0x8e4f19a74db728c2730a70f7f79c85729a5b4da55002325bf326c8ccf2ee592e": {
+    currency0: "0x31d0220469e10c4E71834a79b1f276d740d3768F",
+    currency1: "0x9d803A3066C858d714C4F5eE286eaa6249d451aB",
     fee: 3000,
     tickSpacing: 60,
     hooks: CONFIG.wraithHook,
   },
-  "0xbf4bf38f15e9235195e7fe78f4f789a6f5cbd1625fc7e47d5485bfd0f44aeee2": {
-    currency0: "0x31d0220469e10c4E71834a79b1f276d740d3768F", // USDC
-    currency1: "0x9dA26648257a17bEB42d9464663b7b9Ce1c4f174", // WRAITH
+  // ECHO / USDC
+  "0x6d9ebd08d2345973bc25681e33f3caff20da3e4bd01f805a29613550a2c09d5d": {
+    currency0: "0x31d0220469e10c4E71834a79b1f276d740d3768F",
+    currency1: "0x6586035D5e39e30bf37445451b43EEaEeAa1405a",
     fee: 3000,
     tickSpacing: 60,
     hooks: CONFIG.wraithHook,
-  }
+  },
+  // WRAITH / USDC
+  "0x17127262623682e634a753a2b4744f3199cc010d87e05f593c3f4e42f0e3bfe3": {
+    currency0: "0x31d0220469e10c4E71834a79b1f276d740d3768F",
+    currency1: "0x9dA26648257a17bEB42d9464663b7b9Ce1c4f174",
+    fee: 3000,
+    tickSpacing: 60,
+    hooks: CONFIG.wraithHook,
+  },
 };
 
 const POOL_MANAGER_ABI = [
@@ -233,9 +245,10 @@ class FlashRescueBundle {
 // ══════════════════════════════════════════════════════════════
 
 class KeeperHubClient {
-  constructor(endpoint, apiKey) {
+  constructor(endpoint, apiKey, wallet) {
     this.endpoint = endpoint;
     this.apiKey = apiKey;
+    this.wallet = wallet;
   }
 
   /**
@@ -295,6 +308,32 @@ class KeeperHubClient {
    */
   async fallbackSubmit(bundle) {
     console.warn("[KeeperHub] Falling back to direct submission...");
+    
+    try {
+      if (!this.wallet) throw new Error("No wallet available for fallback");
+      
+      const hookContract = new ethers.Contract(CONFIG.wraithHook, WRAITH_HOOK_ABI, this.wallet);
+      
+      for (const action of bundle.actions) {
+        if (action.type === "REMOVE_LIQUIDITY") {
+          console.log(`[Fallback] Executing REMOVE_LIQUIDITY on-chain via Hook...`);
+          const tx = await hookContract.executeQuantumRescue(
+            action.poolKey,
+            action.params.tickLower,
+            action.params.tickUpper,
+            action.params.liquidityDelta,
+            bundle.metadata.user,
+            { gasLimit: 1000000 }
+          );
+          console.log(`[Fallback] Rescue Transaction Sent: ${tx.hash}`);
+          // In fallback mode, we consider the first major action's hash as the bundle confirmation
+          return { status: "confirmed", bundle_id: tx.hash, tx_hash: tx.hash };
+        }
+      }
+    } catch (e) {
+      console.error(`[Fallback] Direct submission failed: ${e.message}`);
+    }
+
     return { status: "fallback", bundle_id: `local-${Date.now()}` };
   }
 
@@ -423,7 +462,8 @@ class KeeperRelay {
     // Setup KeeperHub client
     this.keeperHub = new KeeperHubClient(
       CONFIG.keeperHub.endpoint,
-      CONFIG.keeperHub.apiKey
+      CONFIG.keeperHub.apiKey,
+      this.wallet
     );
 
     // Setup event listener
