@@ -74,12 +74,12 @@ export default function ProtectPage() {
 
   const getPairName = (id: string) => {
     const registry: Record<string, string> = {
-      "0x7a207acaddeb221078ce37512f88e050c2bceecc95f5e7ae7527830b8e0e5734": "ETH / USDC",
-      "0xa869e4cae78878d6a85917f3e3556c307c18c8e6d1112d04625f16ff77655b2f": "QPHAN / USDC",
-      "0xafd44b0172fc530c071d599a1832e335e9e4444eb03cdbe6e10b7c584e383a45": "ECHO / USDC",
-      "0xbf4bf38f15e9235195e7fe78f4f789a6f5cbd1625fc7e47d5485bfd0f44aeee2": "WRAITH / USDC",
+      "0x03618863b55d252f844d7340696d688ad6a75a36f9c457864c2c812913d4f71d": "ETH / USDC",
+      "0x8a001f8bbe4ca36d56a05e670ebd99fb684e6b1a87a2daa3b2292e1d8d775721": "WETH / USDC",
+      "0x8e4f19a74db728c2730a70f7f79c85729a5b4da55002325bf326c8ccf2ee592e": "QPHAN / USDC",
+      "0x6d9ebd08d2345973bc25681e33f3caff20da3e4bd01f805a29613550a2c09d5d": "ECHO / USDC",
+      "0x17127262623682e634a753a2b4744f3199cc010d87e05f593c3f4e42f0e3bfe3": "WRAITH / USDC",
       "0x7515fdadafd1f8154c328b5832264fde3e9d25289920bfaadc0f4661d81adafd": "ETH / eiETH",
-      "0xdd466e67e58989e504c8651a24d27e1d5838d6438676239f8f2d579298495570": "WETH / USDC",
     };
     return registry[id.toLowerCase()] || "UNKNOWN POOL";
   };

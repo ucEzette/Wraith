@@ -11,7 +11,9 @@ import {
   poolManagerConfig,
   modifyLiquidityTestConfig,
   MODIFY_LIQUIDITY_TEST_ADDRESS,
-  POOL_MANAGER_ADDRESS
+  POOL_MANAGER_ADDRESS,
+  USDC_ADDRESS,
+  WRAITH_ADDRESS
 } from "@/lib/contracts";
 
 export default function LiquidityPage() {
@@ -19,12 +21,12 @@ export default function LiquidityPage() {
   const publicClient = usePublicClient();
   const { writeContractAsync } = useWriteContract();
 
-  // State
-  const [currency0, setCurrency0] = useState("");
-  const [currency1, setCurrency1] = useState("");
+  // State - Defaulting to WRAITH/USDC pool
+  const [currency0, setCurrency0] = useState(USDC_ADDRESS);
+  const [currency1, setCurrency1] = useState(WRAITH_ADDRESS);
   const [fee, setFee] = useState("3000");
   const [tickSpacing, setTickSpacing] = useState("60");
-  const [priceRatio, setPriceRatio] = useState("1"); // 1:1 price
+  const [priceRatio, setPriceRatio] = useState("5000"); // 5000:1 ratio as per initialization
   
   // Calculate sqrtPriceX96 from user-friendly ratio
   const getInitialPrice = (ratioStr: string) => {
@@ -39,8 +41,8 @@ export default function LiquidityPage() {
     }
   };
   
-  const [tickLower, setTickLower] = useState("-600");
-  const [tickUpper, setTickUpper] = useState("600");
+  const [tickLower, setTickLower] = useState("-60000");
+  const [tickUpper, setTickUpper] = useState("60000");
   const [liquidityDelta, setLiquidityDelta] = useState("1000000"); // Start with a safe 6-decimal scale delta
   
   // Strategy presets
