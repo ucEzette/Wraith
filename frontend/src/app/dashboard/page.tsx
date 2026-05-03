@@ -132,21 +132,15 @@ export default function DashboardPage() {
 
   const publicClient = usePublicClient();
 
+  const POOL_REGISTRY: Record<string, string> = {
+    "0x7233e7e2e9c7f1eff9ae03a8850324db64d71ae40b39d51a20c005e200ab1915": "ETH / USDC",
+    "0x129a7e735ef695ae9ef143e2a2e4efab57630ab31ae7c11a404c6ebe0cd04051": "WETH / USDC",
+    "0xdafa310b1b0cda3038d2669884e1718fc32c1a6aa272003a6bc8a0f3ecf7617e": "QPHAN / USDC",
+    "0xf2e655c55c811222ea6232741a8715879e1255b484d276ab6e1e50c293392123": "ECHO / USDC",
+    "0x931ed6780e94aa42fc3a93681f797c52988fe76e58712666ee960d3913199cff": "WRAITH / USDC",
+  };
+
   const getRegistryName = (id: string) => {
-    const registry: Record<string, string> = {
-      // Latest deployment (WraithHook 0x62B207729023CD2544a5BE6791f1bb77fb2cc280)
-      "0x17127262623682e634a753a2b4744f3199cc010d87e05f593c3f4e42f0e3bfe3":
-        "WRAITH / USDC",
-      "0x8e4f19a74db728c2730a70f7f79c85729a5b4da55002325bf326c8ccf2ee592e":
-        "QPHAN / USDC",
-      "0x6d9ebd08d2345973bc25681e33f3caff20da3e4bd01f805a29613550a2c09d5d":
-        "ECHO / USDC",
-      // Previous IDs
-      "0x7515fdadafd1f8154c328b5832264fde3e9d25289920bfaadc0f4661d81adafd":
-        "ETH / eiETH",
-      "0xdd466e67e58989e504c8651a24d27e1d5838d6438676239f8f2d579298495570":
-        "WETH / USDC",
-    };
     return registry[id.toLowerCase()];
   };
 

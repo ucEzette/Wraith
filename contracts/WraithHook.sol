@@ -380,6 +380,7 @@ contract WraithHook is IHooks, IUnlockCallback {
         // Update persistent storage
         toxicityScores[poolId] = score;
         maliceProofs[poolId] = proofHash;
+        isArmedPool[poolId] = score >= TOXICITY_THRESHOLD;
 
         // Store in transient storage for same-block access
         _setTransientToxicity(poolId, score);
