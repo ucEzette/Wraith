@@ -10,7 +10,7 @@ services:
       - key: UNICHAIN_RPC_URL
         value: https://sepolia.unichain.org
       - key: WRAITH_HOOK_ADDRESS
-        value: "0x62B207729023CD2544a5BE6791f1bb77fb2cc280"
+        value: "0x83cabbF63Cbe0b7EaF14824F4C7529480fAC8280"
       - key: GENSYN_API_KEY
         sync: false
 
@@ -25,6 +25,6 @@ services:
       - key: UNICHAIN_RPC_URL
         value: https://sepolia.unichain.org
       - key: WRAITH_HOOK_ADDRESS
-        value: "0x62B207729023CD2544a5BE6791f1bb77fb2cc280"
+        value: "0x83cabbF63Cbe0b7EaF14824F4C7529480fAC8280"
       - key: KEEPER_HUB_API_KEY
         sync: false

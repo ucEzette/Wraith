@@ -1,7 +1,7 @@
 import WraithHookABI from './WraithHookABI.json';
 
 // Deployed on Unichain Sepolia with 0x280 suffix for v4 hook permissions
-export const WRAITH_HOOK_ADDRESS = '0x62B207729023CD2544a5BE6791f1bb77fb2cc280'; 
+export const WRAITH_HOOK_ADDRESS = '0x83cabbF63Cbe0b7EaF14824F4C7529480fAC8280'; 
 
 export const wraithHookConfig = {
   address: WRAITH_HOOK_ADDRESS as `0x${string}`,
