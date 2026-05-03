@@ -10,7 +10,8 @@ import {
   WRAITH_HOOK_ADDRESS,
   poolManagerConfig,
   modifyLiquidityTestConfig,
-  MODIFY_LIQUIDITY_TEST_ADDRESS
+  MODIFY_LIQUIDITY_TEST_ADDRESS,
+  POOL_MANAGER_ADDRESS
 } from "@/lib/contracts";
 
 export default function LiquidityPage() {
@@ -41,24 +42,10 @@ export default function LiquidityPage() {
   const [tickLower, setTickLower] = useState("-600");
   const [tickUpper, setTickUpper] = useState("600");
   const [liquidityDelta, setLiquidityDelta] = useState("1000000"); // Start with a safe 6-decimal scale delta
-
-  const [isLoading, setIsLoading] = useState(false);
-  const [txHistory, setTxHistory] = useState<Array<{hash: string, type: string, timestamp: number}>>([]);
-
-  useEffect(() => {
-    const saved = localStorage.getItem("wraith_liquidity_history");
-    if (saved) {
-      try { setTxHistory(JSON.parse(saved)); } catch (e) {}
-    }
-  }, []);
-
-  const addHistory = (hash: string, type: string) => {
-    setTxHistory(prev => {
-      const updated = [{ hash, type, timestamp: Date.now() }, ...prev];
-      localStorage.setItem("wraith_liquidity_history", JSON.stringify(updated));
-      return updated;
-    });
-  };
+  
+  // Strategy presets
+  const [strategy, setStrategy] = useState("balanced"); // 'balanced', 'wraith_only', 'usdc_only'
+  const [humanAmount, setHumanAmount] = useState("10"); // Human readable token amount
 
   // Helper to ensure currency0 < currency1
   const orderTokens = (t0: string, t1: string) => {
@@ -69,13 +56,157 @@ export default function LiquidityPage() {
   const getPoolKey = () => {
     const [c0, c1] = orderTokens(currency0, currency1);
     return {
-      currency0: c0 as `0x${string}`,
-      currency1: c1 as `0x${string}`,
+      currency0: (c0 || "0x0") as `0x${string}`,
+      currency1: (c1 || "0x0") as `0x${string}`,
       fee: Number(fee),
       tickSpacing: Number(tickSpacing),
       hooks: WRAITH_HOOK_ADDRESS as `0x${string}`
     };
   };
+
+  const poolKey = getPoolKey();
+
+  const { data: symbol0 } = useReadContract({
+    address: poolKey.currency0 !== "0x0" ? poolKey.currency0 : undefined,
+    abi: erc20Abi,
+    functionName: 'symbol',
+  });
+
+  const { data: symbol1 } = useReadContract({
+    address: poolKey.currency1 !== "0x0" ? poolKey.currency1 : undefined,
+    abi: erc20Abi,
+    functionName: 'symbol',
+  });
+
+  const { data: decimals0 } = useReadContract({
+    address: poolKey.currency0 !== "0x0" ? poolKey.currency0 : undefined,
+    abi: erc20Abi,
+    functionName: 'decimals',
+  });
+
+  const { data: decimals1 } = useReadContract({
+    address: poolKey.currency1 !== "0x0" ? poolKey.currency1 : undefined,
+    abi: erc20Abi,
+    functionName: 'decimals',
+  });
+
+  // Calculate under the hood L based on strategy and human amount
+  useEffect(() => {
+    try {
+      const amt = parseFloat(humanAmount);
+      if (isNaN(amt) || amt <= 0) return;
+
+      const pa = Math.pow(1.0001, Number(tickLower));
+      const pb = Math.pow(1.0001, Number(tickUpper));
+      const spa = Math.sqrt(pa);
+      const spb = Math.sqrt(pb);
+      const sp = 1.0; // Assume tick 0
+
+      const d0 = decimals0 !== undefined ? Number(decimals0) : 6;
+      const d1 = decimals1 !== undefined ? Number(decimals1) : 18;
+
+      if (strategy === "token1_only") {
+        // Token 1 only
+        const wei = amt * Math.pow(10, d1);
+        const l = wei / (spb - spa);
+        setLiquidityDelta(BigInt(Math.floor(l)).toString());
+      } else if (strategy === "token0_only") {
+        // Token 0 only
+        const wei = amt * Math.pow(10, d0);
+        const l = wei * (spb * spa) / (spb - spa);
+        setLiquidityDelta(BigInt(Math.floor(l)).toString());
+      } else {
+        // Balanced (safe delta)
+        setLiquidityDelta(BigInt(Math.floor(amt * 1e6)).toString()); 
+      }
+    } catch(e) {}
+  }, [strategy, humanAmount, tickLower, tickUpper, decimals0, decimals1]);
+
+  const handleStrategyChange = (s: string) => {
+    setStrategy(s);
+    if (s === "balanced") {
+      setTickLower("-600");
+      setTickUpper("600");
+      setHumanAmount("100"); // Safe L
+    } else if (s === "token1_only") {
+      setTickLower("-1200");
+      setTickUpper("-60"); // Below tick 0
+      setHumanAmount("50000"); // 50k Token 1
+    } else if (s === "token0_only") {
+      setTickLower("60");
+      setTickUpper("1200"); // Above tick 0
+      setHumanAmount("10"); // 10 Token 0
+    }
+  };
+
+  const [isLoading, setIsLoading] = useState(false);
+  const [txHistory, setTxHistory] = useState<Array<{hash: string, type: string, timestamp: number}>>([]);
+
+  useEffect(() => {
+    if (!address) {
+      setTxHistory([]);
+      return;
+    }
+    
+    const fetchHistory = async () => {
+      try {
+        const res = await fetch(`https://unichain-sepolia.blockscout.com/api?module=account&action=txlist&address=${address}&startblock=0&endblock=99999999&page=1&offset=50&sort=desc`);
+        const data = await res.json();
+        
+        if (data && data.status === "1" && Array.isArray(data.result)) {
+          const pmAddress = POOL_MANAGER_ADDRESS.toLowerCase();
+          const mltAddress = MODIFY_LIQUIDITY_TEST_ADDRESS.toLowerCase();
+          
+          const formattedHistory = data.result
+            .filter((tx: any) => tx.isError === "0")
+            .map((tx: any) => {
+              const to = tx.to ? tx.to.toLowerCase() : "";
+              const input = tx.input ? tx.input.toLowerCase() : "";
+              let type = "";
+
+              if (to === pmAddress) {
+                if (input.startsWith("0x02b46765") || input.startsWith("0x61446ff7")) {
+                  type = "Initialize Pool";
+                }
+              } else if (to === mltAddress) {
+                type = "Seed Liquidity";
+              } else if (input.startsWith("0x095ea7b3")) {
+                type = "Approve Token";
+              }
+
+              if (type !== "") {
+                return {
+                  hash: tx.hash,
+                  type,
+                  timestamp: parseInt(tx.timeStamp) * 1000
+                };
+              }
+              return null;
+            })
+            .filter(Boolean);
+            
+          setTxHistory(formattedHistory as any);
+        }
+      } catch (error) {
+        console.error("Failed to fetch history:", error);
+      }
+    };
+
+    fetchHistory();
+    const interval = setInterval(fetchHistory, 10000); // Auto-sync every 10s
+    return () => clearInterval(interval);
+  }, [address]);
+
+  // Optimistic UI update
+  const addHistory = (hash: string, type: string) => {
+    setTxHistory(prev => {
+      if (prev.some(t => t.hash === hash)) return prev;
+      return [{ hash, type, timestamp: Date.now() }, ...prev];
+    });
+  };
+
+
+  // Note: getPoolKey was moved up
 
   const handleInitialize = async () => {
     if (!currency0 || !currency1) {
@@ -335,16 +466,41 @@ export default function LiquidityPage() {
               </div>
 
               <div className="mb-6">
-                <label className="text-xs text-cyan-400 uppercase tracking-widest font-bold">Liquidity Amount (Raw Delta)</label>
+                <div className="flex gap-2 mb-4">
+                  <button 
+                    onClick={() => handleStrategyChange("balanced")}
+                    className={`flex-1 py-2 text-xs font-bold uppercase tracking-widest rounded transition-all ${strategy === 'balanced' ? 'bg-cyan-500 text-black' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}
+                  >Balanced</button>
+                  <button 
+                    onClick={() => handleStrategyChange("token1_only")}
+                    className={`flex-1 py-2 text-xs font-bold uppercase tracking-widest rounded transition-all ${strategy === 'token1_only' ? 'bg-purple-500 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}
+                  >{symbol1 ? `${symbol1 as string} Only` : 'Token 1 Only'}</button>
+                  <button 
+                    onClick={() => handleStrategyChange("token0_only")}
+                    className={`flex-1 py-2 text-xs font-bold uppercase tracking-widest rounded transition-all ${strategy === 'token0_only' ? 'bg-blue-500 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}
+                  >{symbol0 ? `${symbol0 as string} Only` : 'Token 0 Only'}</button>
+                </div>
+
+                <label className="text-xs text-cyan-400 uppercase tracking-widest font-bold">
+                  {strategy === 'token1_only' ? `${symbol1 || 'Token 1'} Amount` : strategy === 'token0_only' ? `${symbol0 || 'Token 0'} Amount` : 'Liquidity Scale (Balanced)'}
+                </label>
                 <input 
                   type="text" 
-                  value={liquidityDelta}
-                  onChange={(e) => setLiquidityDelta(e.target.value)}
+                  value={humanAmount}
+                  onChange={(e) => setHumanAmount(e.target.value)}
                   className="w-full mt-1 bg-black/50 border border-white/10 rounded-md p-3 text-white font-mono text-sm focus:border-cyan-400 focus:outline-none transition-all"
                 />
-                <p className="text-[10px] text-slate-500 font-mono mt-1">
-                  Because USDC has 6 decimals and WRAITH has 18, use a smaller delta (e.g., 1000000) to avoid exceeding your USDC balance.
-                </p>
+                
+                <div className="mt-4 p-3 bg-black/30 border border-white/5 rounded">
+                  <p className="text-[10px] text-slate-400 font-mono flex justify-between">
+                    <span>Under the hood Delta:</span>
+                    <span className="text-emerald-400">{liquidityDelta}</span>
+                  </p>
+                  <p className="text-[10px] text-slate-400 font-mono mt-1 flex justify-between">
+                    <span>Tick Range:</span>
+                    <span className="text-cyan-400">[{tickLower}, {tickUpper}]</span>
+                  </p>
+                </div>
               </div>
 
               <button 
