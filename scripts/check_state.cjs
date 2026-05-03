@@ -7,7 +7,7 @@ async function main() {
     const PM = "0x00B036B58a818B1BC34d502D3fE730Db729e62AC";
 
     const pmAbi = [
-        "function getPoolId(address,address,uint24,int24,address) pure returns (bytes32)",
+        "function getPoolId((address,address,uint24,int24,address)) pure returns (bytes32)",
         "function pools(bytes32) view returns (uint160, int24, uint24, uint24)"
     ];
 
@@ -22,7 +22,7 @@ async function main() {
         hooks: HOOK
     };
 
-    const pid = await pm.getPoolId(poolKey.currency0, poolKey.currency1, poolKey.fee, poolKey.tickSpacing, poolKey.hooks);
+    const pid = await pm.getPoolId([poolKey.currency0, poolKey.currency1, poolKey.fee, poolKey.tickSpacing, poolKey.hooks]);
     console.log(`Pool ID: ${pid}`);
 
     const pool = await pm.pools(pid);

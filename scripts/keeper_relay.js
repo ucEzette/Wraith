@@ -60,6 +60,7 @@ const CONFIG = {
   // Timing & Gas
   maxGasPrice: ethers.parseUnits("100", "gwei"),
   rescueDeadlineSeconds: 120,
+  pollIntervalMs: 2000,
 };
 
 const WRAITH_HOOK_ABI = [
@@ -663,9 +664,9 @@ class KeeperRelay {
         user,
         vault,
         liquidityParams: {
-          tickLower: -887220,
-          tickUpper: 887220,
-          liquidityDelta: ethers.MinInt256, // Remove all
+          tickLower: -60000, // Matches seeding script range
+          tickUpper: 60000,
+          liquidityDelta: -50000000000000n, // Remove the specific amount seeded
           salt: ethers.ZeroHash,
         },
         safeAsset: rescueToken || CONFIG.safeAssets.USDC,
