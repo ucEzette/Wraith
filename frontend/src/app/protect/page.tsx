@@ -387,8 +387,20 @@ export default function ProtectPage() {
         </div>
       </main>
 
-      <footer className="bg-slate-950 border-t border-white/5 py-8 text-center text-[9px] text-slate-600 uppercase tracking-widest">
-        WRAITH PROTOCOL // SECURE_LAYER_V4
+      <footer className="bg-slate-950 border-t border-white/5 py-12 px-12">
+        <div className="max-w-[1440px] mx-auto flex flex-col md:flex-row justify-between items-center gap-8">
+          <div className="flex items-center gap-4">
+            <span className="text-xl font-black text-white uppercase">WRAITH</span>
+            <span className="text-slate-500 text-[10px] font-mono tracking-widest uppercase">// SECURE_LAYER_V4</span>
+          </div>
+          <div className="flex gap-8 text-[9px] text-slate-500 uppercase tracking-widest font-bold">
+            <Link href="/info" className="hover:text-white transition-colors">Documentation</Link>
+            <a href="https://docs.gensyn.ai" className="hover:text-emerald-400 transition-colors">Gensyn</a>
+            <a href="https://docs.keeperhub.io" className="hover:text-blue-400 transition-colors">Keeper Hub</a>
+            <a href="https://docs.uniswap.org" className="hover:text-pink-400 transition-colors">Uniswap</a>
+          </div>
+          <div className="text-slate-600 text-[10px] font-mono">© 2026 WRAITH PROTOCOL</div>
+        </div>
       </footer>
     </div>
   );

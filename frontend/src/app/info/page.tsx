@@ -175,10 +175,12 @@ export default function HowItWorks() {
             <span className="text-slate-500 text-xs font-mono">// AUTONOMOUS_DEFENSE</span>
           </div>
           <div className="flex gap-8 text-[10px] font-mono uppercase tracking-[0.2em] text-slate-500">
-            <Link href="/" className="hover:text-cyan-400 transition-colors">Dashboard</Link>
+            <Link href="/dashboard" className="hover:text-cyan-400 transition-colors">Dashboard</Link>
             <Link href="/protect" className="hover:text-cyan-400 transition-colors">Protection</Link>
-            <Link href="/sentinel" className="hover:text-cyan-400 transition-colors">Sentinel</Link>
-            <a href="#" className="hover:text-cyan-400 transition-colors">Github</a>
+            <a href="https://github.com/ucEzette/Wraith" className="hover:text-cyan-400 transition-colors">Github</a>
+            <a href="https://docs.gensyn.ai" className="hover:text-cyan-400 transition-colors">Gensyn</a>
+            <a href="https://docs.keeperhub.io" className="hover:text-cyan-400 transition-colors">Keeper Hub</a>
+            <a href="https://docs.uniswap.org" className="hover:text-cyan-400 transition-colors">Uniswap</a>
           </div>
           <div className="text-slate-600 text-[10px] font-mono">
             &copy; 2026 WRAITH PROTOCOL // GEN-KEEPER HACKATHON

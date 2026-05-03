@@ -201,11 +201,12 @@ export default function LandingPage() {
             <img src="/logo.png" alt="Wraith Logo" className="h-8 w-auto opacity-50 grayscale hover:grayscale-0 hover:opacity-100 transition-all" />
             <div className="text-xl font-black tracking-tighter text-white uppercase">WRAITH PROTOCOL</div>
           </div>
-          <div className="flex gap-12 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-            <a href="#" className="hover:text-white transition-colors">Documentation</a>
-            <a href="#" className="hover:text-white transition-colors">GitHub</a>
-            <a href="#" className="hover:text-white transition-colors">Gensyn</a>
-            <a href="#" className="hover:text-white transition-colors">Uniswap v4</a>
+          <div className="flex flex-wrap justify-center gap-8 md:gap-12 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+            <Link href="/info" className="hover:text-cyan-400 transition-colors">Documentation</Link>
+            <a href="https://github.com/ucEzette/Wraith" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">GitHub</a>
+            <a href="https://docs.gensyn.ai" target="_blank" rel="noopener noreferrer" className="hover:text-emerald-400 transition-colors">Gensyn</a>
+            <a href="https://docs.keeperhub.io" target="_blank" rel="noopener noreferrer" className="hover:text-blue-400 transition-colors">Keeper Hub</a>
+            <a href="https://docs.uniswap.org" target="_blank" rel="noopener noreferrer" className="hover:text-pink-400 transition-colors">Uniswap v4</a>
           </div>
           <div className="text-[10px] text-slate-600 font-mono">© 2026 WRAITH DEFENSE SYSTEMS</div>
         </div>
