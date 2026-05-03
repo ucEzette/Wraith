@@ -3,6 +3,7 @@ pragma solidity ^0.8.26;
 
 import {IPoolManager} from "v4-core/src/interfaces/IPoolManager.sol";
 import {IHooks} from "v4-core/src/interfaces/IHooks.sol";
+import {IUnlockCallback} from "v4-core/src/interfaces/callback/IUnlockCallback.sol";
 import {Hooks} from "v4-core/src/libraries/Hooks.sol";
 import {LPFeeLibrary} from "v4-core/src/libraries/LPFeeLibrary.sol";
 import {PoolKey} from "v4-core/src/types/PoolKey.sol";
@@ -34,7 +35,7 @@ import {Currency} from "v4-core/src/types/Currency.sol";
 /// │         │                 │                   │              │
 /// │         └────── EIP-1153 Transient Storage ───┘              │
 /// └──────────────────────────────────────────────────────────────┘
-contract WraithHook is IHooks {
+contract WraithHook is IHooks, IUnlockCallback {
     using PoolIdLibrary for PoolKey;
     using LPFeeLibrary for uint24;
 
@@ -646,19 +647,68 @@ contract WraithHook is IHooks {
 
     /// @notice Atomic rescue execution for Keeper Hub
     /// @param key The pool key
+    /// @param tickLower The lower tick of the position
+    /// @param tickUpper The upper tick of the position
+    /// @param liquidityDelta The amount of liquidity to remove (negative)
     /// @param user The user to rescue
     function executeQuantumRescue(
         PoolKey calldata key,
+        int24 tickLower,
+        int24 tickUpper,
+        int256 liquidityDelta,
         address user
     ) external onlySentinel {
         PoolId poolId = key.toId();
         
-        // 1. Final Safety Check
+        // 1. Safety Checks
         uint256 threshold = userThresholds[user];
         if (threshold == 0) threshold = TOXICITY_THRESHOLD;
         if (toxicityScores[poolId] < threshold) revert PoolToxic();
-        
-        // 2. Perform Extraction logic (Emit signal for settlement)
-        emit QuantumExitTriggered(poolId, user, userRescueTokens[user], 0, 0);
+        if (!isWraithGuard[user]) revert NotWraithGuardUser();
+        if (userVaults[user] == address(0)) revert QuantumExitFailed();
+        if (!poolManager.isOperator(user, address(this))) revert OperatorNotApproved();
+
+        // 2. Perform the rescue!
+        bytes memory data = abi.encode(key, tickLower, tickUpper, liquidityDelta, user);
+        poolManager.unlock(data);
+    }
+
+    /// @notice Callback from PoolManager during unlock
+    function unlockCallback(bytes calldata data) external override onlyPoolManager returns (bytes memory) {
+        (PoolKey memory key, int24 tickLower, int24 tickUpper, int256 liquidityDelta, address user) = 
+            abi.decode(data, (PoolKey, int24, int24, int256, address));
+
+        // 1. Remove liquidity (on behalf of user)
+        // Note: the hook is an operator for the user
+        (BalanceDelta delta, ) = poolManager.modifyLiquidity(
+            key,
+            IPoolManager.ModifyLiquidityParams({
+                tickLower: tickLower,
+                tickUpper: tickUpper,
+                liquidityDelta: liquidityDelta,
+                salt: bytes32(0)
+            }),
+            abi.encode(user, "WRAITH_QUANTUM_EXIT")
+        );
+
+        // 2. Take the tokens from PoolManager
+        // If liquidityDelta was negative, delta amounts are positive (we receive tokens)
+        if (delta.amount0() > 0) {
+            poolManager.take(key.currency0, address(this), uint128(delta.amount0()));
+        }
+        if (delta.amount1() > 0) {
+            poolManager.take(key.currency1, address(this), uint128(delta.amount1()));
+        }
+
+        // 3. Send tokens to user's vault
+        address vault = userVaults[user];
+        if (delta.amount0() > 0) {
+            key.currency0.transfer(vault, uint128(delta.amount0()));
+        }
+        if (delta.amount1() > 0) {
+            key.currency1.transfer(vault, uint128(delta.amount1()));
+        }
+
+        return "";
     }
 }
