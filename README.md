@@ -33,7 +33,7 @@ The Wraith system is a decentralized "Agent Guard" architecture composed of four
 
 The protocol is live and verified on the Unichain Sepolia testnet:
 
-- **WraithHook**: [`0xD56388a4ce5Cd9E236201AD3DF27Edfbb28E0280`](https://unichain-sepolia.blockscout.com/address/0xD56388a4ce5Cd9E236201AD3DF27Edfbb28E0280)
+- **WraithHook**: [`0x62B207729023CD2544a5BE6791f1bb77fb2cc280`](https://unichain-sepolia.blockscout.com/address/0x62B207729023CD2544a5BE6791f1bb77fb2cc280)
 - **PoolManager**: `0x00B036B58a818B1BC34d502D3fE730Db729e62AC` (Uniswap v4 Singleton)
 - **WraithToken (WRAITH)**: [`0x9dA26648257a17bEB42d9464663b7b9Ce1c4f174`](https://unichain-sepolia.blockscout.com/address/0x9dA26648257a17bEB42d9464663b7b9Ce1c4f174)
 - **QuantumPhantom (QPHAN)**: [`0x9d803A3066C858d714C4F5eE286eaa6249d451aB`](https://unichain-sepolia.blockscout.com/address/0x9d803A3066C858d714C4F5eE286eaa6249d451aB)
@@ -91,7 +91,7 @@ To evaluate the **Wraith Protocol** active defense mechanisms, judges can follow
 Ensure your `.env` has the following variables:
 ```bash
 UNICHAIN_RPC_URL=https://sepolia.unichain.org
-WRAITH_HOOK_ADDRESS=0xD56388a4ce5Cd9E236201AD3DF27Edfbb28E0280
+WRAITH_HOOK_ADDRESS=0x62B207729023CD2544a5BE6791f1bb77fb2cc280
 PRIVATE_KEY=<YOUR_PRIVATE_KEY>
 ```
 
