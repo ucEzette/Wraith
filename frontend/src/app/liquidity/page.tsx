@@ -23,13 +23,44 @@ export default function LiquidityPage() {
   const [currency1, setCurrency1] = useState("");
   const [fee, setFee] = useState("3000");
   const [tickSpacing, setTickSpacing] = useState("60");
-  const [initialPrice, setInitialPrice] = useState("79228162514264337593543950336"); // 1:1 price
+  const [priceRatio, setPriceRatio] = useState("1"); // 1:1 price
+  
+  // Calculate sqrtPriceX96 from user-friendly ratio
+  const getInitialPrice = (ratioStr: string) => {
+    try {
+      const p = parseFloat(ratioStr);
+      if (isNaN(p) || p <= 0) return "79228162514264337593543950336";
+      const sqrt = Math.sqrt(p);
+      const q96 = BigInt("79228162514264337593543950336"); // 2^96
+      return (BigInt(Math.floor(sqrt * 1e18)) * q96 / BigInt(1e18)).toString();
+    } catch {
+      return "79228162514264337593543950336";
+    }
+  };
   
   const [tickLower, setTickLower] = useState("-600");
   const [tickUpper, setTickUpper] = useState("600");
-  const [liquidityDelta, setLiquidityDelta] = useState("1000000000000000000"); // 1 token (18 decimals)
+  const [liquidityDelta, setLiquidityDelta] = useState("1000000000000000000"); // Under the hood delta
+  const [amount0, setAmount0] = useState("1");
+  const [amount1, setAmount1] = useState("1");
 
   const [isLoading, setIsLoading] = useState(false);
+  const [txHistory, setTxHistory] = useState<Array<{hash: string, type: string, timestamp: number}>>([]);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("wraith_liquidity_history");
+    if (saved) {
+      try { setTxHistory(JSON.parse(saved)); } catch (e) {}
+    }
+  }, []);
+
+  const addHistory = (hash: string, type: string) => {
+    setTxHistory(prev => {
+      const updated = [{ hash, type, timestamp: Date.now() }, ...prev];
+      localStorage.setItem("wraith_liquidity_history", JSON.stringify(updated));
+      return updated;
+    });
+  };
 
   // Helper to ensure currency0 < currency1
   const orderTokens = (t0: string, t1: string) => {
@@ -60,7 +91,7 @@ export default function LiquidityPage() {
         functionName: 'initialize',
         args: [
           getPoolKey(),
-          BigInt(initialPrice)
+          BigInt(getInitialPrice(priceRatio))
         ]
       } as any);
       
@@ -68,6 +99,7 @@ export default function LiquidityPage() {
       if (publicClient) {
         await publicClient.waitForTransactionReceipt({ hash: tx });
         toast.success("Pool Initialized Successfully!");
+        addHistory(tx, "Initialize Pool");
       }
     } catch (e: any) {
       console.error(e);
@@ -94,6 +126,7 @@ export default function LiquidityPage() {
       if (publicClient) {
         await publicClient.waitForTransactionReceipt({ hash: tx });
         toast.success(`Approved ${token.slice(0, 8)}!`);
+        addHistory(tx, `Approve ${token.slice(0, 4)}...`);
       }
     } catch (e: any) {
       console.error(e);
@@ -132,6 +165,7 @@ export default function LiquidityPage() {
       if (publicClient) {
         await publicClient.waitForTransactionReceipt({ hash: tx });
         toast.success("Liquidity Added Successfully!");
+        addHistory(tx, "Seed Liquidity");
       }
     } catch (e: any) {
       console.error(e);
@@ -229,14 +263,16 @@ export default function LiquidityPage() {
            </div>
 
            <div className="mt-4 pt-6 border-t border-white/10 z-10">
-              <h3 className="text-sm text-white font-bold mb-4 uppercase tracking-widest">1. Initialize Pool</h3>
-              <label className="text-xs text-cyan-400 uppercase tracking-widest font-bold">Initial sqrtPriceX96</label>
+              <h3 className="text-sm text-white font-bold mb-4 uppercase tracking-widest">1. Initialize Pool (Skip if Pool Exists)</h3>
+              <label className="text-xs text-cyan-400 uppercase tracking-widest font-bold">Initial Price Ratio (Token 1 per Token 0)</label>
               <input 
-                type="text" 
-                value={initialPrice}
-                onChange={(e) => setInitialPrice(e.target.value)}
-                className="w-full mt-1 mb-4 bg-black/50 border border-white/10 rounded-md p-3 text-white font-mono text-sm focus:border-cyan-400 focus:outline-none transition-all"
+                type="number" 
+                value={priceRatio}
+                onChange={(e) => setPriceRatio(e.target.value)}
+                placeholder="1"
+                className="w-full mt-1 bg-black/50 border border-white/10 rounded-md p-3 text-white font-mono text-sm focus:border-cyan-400 focus:outline-none transition-all"
               />
+              <p className="text-[10px] text-slate-500 font-mono mt-1 mb-4">Under the hood sqrtPriceX96: {getInitialPrice(priceRatio)}</p>
               <button 
                 onClick={handleInitialize}
                 disabled={isLoading}
@@ -300,13 +336,34 @@ export default function LiquidityPage() {
                 </div>
               </div>
 
-              <label className="text-xs text-cyan-400 uppercase tracking-widest font-bold">Liquidity Delta</label>
-              <input 
-                type="text" 
-                value={liquidityDelta}
-                onChange={(e) => setLiquidityDelta(e.target.value)}
-                className="w-full mt-1 mb-6 bg-black/50 border border-white/10 rounded-md p-3 text-white font-mono text-sm focus:border-cyan-400 focus:outline-none transition-all"
-              />
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <div>
+                  <label className="text-xs text-cyan-400 uppercase tracking-widest font-bold">Token 0 Amount</label>
+                  <input 
+                    type="text" 
+                    value={amount0}
+                    onChange={(e) => {
+                      setAmount0(e.target.value);
+                      setAmount1(e.target.value); // Sync 1:1 for pool initial setup
+                      try { setLiquidityDelta(parseUnits(e.target.value || "0", 18).toString()); } catch(e){}
+                    }}
+                    className="w-full mt-1 bg-black/50 border border-white/10 rounded-md p-3 text-white font-mono text-sm focus:border-cyan-400 focus:outline-none transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-cyan-400 uppercase tracking-widest font-bold">Token 1 Amount</label>
+                  <input 
+                    type="text" 
+                    value={amount1}
+                    onChange={(e) => {
+                      setAmount1(e.target.value);
+                      setAmount0(e.target.value); // Sync 1:1 for pool initial setup
+                      try { setLiquidityDelta(parseUnits(e.target.value || "0", 18).toString()); } catch(e){}
+                    }}
+                    className="w-full mt-1 bg-black/50 border border-white/10 rounded-md p-3 text-white font-mono text-sm focus:border-cyan-400 focus:outline-none transition-all"
+                  />
+                </div>
+              </div>
 
               <button 
                 onClick={handleAddLiquidity}
@@ -316,6 +373,44 @@ export default function LiquidityPage() {
                 {isLoading ? <span className="material-symbols-outlined animate-spin">refresh</span> : "Add Liquidity"}
               </button>
            </div>
+        </div>
+
+        {/* Transaction History Panel */}
+        <div className="md:col-span-2 glass-panel rounded-lg p-8 relative overflow-hidden h-fit">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-black text-white uppercase tracking-widest flex items-center gap-2">
+              <span className="material-symbols-outlined text-cyan-400">history</span>
+              Liquidity Operation History (Proof)
+            </h2>
+          </div>
+          
+          <div className="space-y-4">
+            {txHistory.length === 0 ? (
+              <div className="text-slate-500 font-mono text-sm uppercase">No operations recorded yet.</div>
+            ) : (
+              txHistory.map((tx, idx) => (
+                <div key={idx} className="bg-slate-900/40 border border-white/5 p-4 rounded-md flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                  <div className="flex items-center gap-4">
+                    <span className={`px-2 py-1 text-[10px] font-bold rounded uppercase tracking-widest ${tx.type.includes('Seed') ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30'}`}>
+                      {tx.type}
+                    </span>
+                    <span className="text-slate-400 text-xs font-mono">
+                      {new Date(tx.timestamp).toLocaleString()}
+                    </span>
+                  </div>
+                  <a 
+                    href={`https://unichain-sepolia.blockscout.com/tx/${tx.hash}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-cyan-400 hover:text-cyan-300 font-mono text-sm underline flex items-center gap-1"
+                  >
+                    {tx.hash.slice(0, 10)}...{tx.hash.slice(-8)}
+                    <span className="material-symbols-outlined text-[14px]">open_in_new</span>
+                  </a>
+                </div>
+              ))
+            )}
+          </div>
         </div>
       </main>
     </>
