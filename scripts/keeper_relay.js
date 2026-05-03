@@ -56,6 +56,10 @@ const CONFIG = {
   axlPollIntervalMs: 5000,
   eventPollIntervalMs: 2000,
   minRescueScore: 8500, // Trigger rescue if toxicity >= 85%
+
+  // Timing & Gas
+  maxGasPrice: ethers.parseUnits("100", "gwei"),
+  rescueDeadlineSeconds: 120,
 };
 
 const WRAITH_HOOK_ABI = [
@@ -310,17 +314,28 @@ class KeeperHubClient {
       for (const action of bundle.actions) {
         if (action.type === "REMOVE_LIQUIDITY") {
           console.log(`[Fallback] Executing REMOVE_LIQUIDITY on-chain via Hook...`);
+          
+          // Ensure we have the latest nonce
+          const nonce = await this.wallet.getNonce("pending");
+          
           const tx = await hookContract.executeQuantumRescue(
             action.poolKey,
             action.params.tickLower,
             action.params.tickUpper,
             action.params.liquidityDelta,
             bundle.metadata.user,
-            { gasLimit: 1000000 }
+            { gasLimit: 1500000, nonce }
           );
           console.log(`[Fallback] Rescue Transaction Sent: ${tx.hash}`);
-          // In fallback mode, we consider the first major action's hash as the bundle confirmation
-          return { status: "confirmed", bundle_id: tx.hash, tx_hash: tx.hash };
+          
+          const receipt = await tx.wait();
+          if (receipt.status === 1) {
+            console.log(`[Fallback] ✅ Rescue SUCCESSFUL for ${bundle.metadata.user}`);
+            return { status: "confirmed", bundle_id: tx.hash, tx_hash: tx.hash };
+          } else {
+            console.error(`[Fallback] ❌ Rescue REVERTED for ${bundle.metadata.user}`);
+            throw new Error("Transaction reverted");
+          }
         }
       }
     } catch (e) {
@@ -431,6 +446,7 @@ class KeeperRelay {
     this.processedExits = new Set();
     this.processedToxicity = new Set();
     this.axlWarningLogged = false;
+    this.processingRescue = false;
   }
 
   async initialize() {
@@ -518,7 +534,19 @@ class KeeperRelay {
   setupEventHandlers() {
     // Handle Quantum Exit events
     this.listener.on("QuantumExitTriggered", async (data) => {
-      await this.handleQuantumExit(data);
+      // Use a lock/queue to ensure sequential processing of rescues
+      if (this.processingRescue) {
+        console.log("[Relay] Rescue already in progress, queuing...");
+        // In a real system, use a proper queue. For this demo, we'll just wait.
+        while (this.processingRescue) await new Promise(r => setTimeout(r, 1000));
+      }
+      
+      this.processingRescue = true;
+      try {
+        await this.handleQuantumExit(data);
+      } finally {
+        this.processingRescue = false;
+      }
     });
 
     // Handle Toxicity events for MEV capture and proactive exit triggering
