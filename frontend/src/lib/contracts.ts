@@ -1,7 +1,7 @@
 import WraithHookABI from './WraithHookABI.json';
 
 // Deployed on Unichain Sepolia with 0x280 suffix for v4 hook permissions
-export const WRAITH_HOOK_ADDRESS = '0xD56388a4ce5Cd9E236201AD3DF27Edfbb28E0280'; 
+export const WRAITH_HOOK_ADDRESS = '0x62B207729023CD2544a5BE6791f1bb77fb2cc280'; 
 
 export const wraithHookConfig = {
   address: WRAITH_HOOK_ADDRESS as `0x${string}`,
@@ -9,7 +9,8 @@ export const wraithHookConfig = {
 };
 
 export const POOL_MANAGER_ADDRESS = '0x00B036B58a818B1BC34d502D3fE730Db729e62AC'; 
-
+export const USDC_ADDRESS = '0x31d0220469e10c4E71834a79b1f276d740d3768F';
+export const WRAITH_ADDRESS = '0x9dA26648257a17bEB42d9464663b7b9Ce1c4f174';
 // Minimal PoolManager ABI for operator approvals (ERC-6909)
 // Users must call setOperator(wraith_hook, true) to allow the protocol
 // to remove their liquidity during a Quantum Auto-Exit rescue.
