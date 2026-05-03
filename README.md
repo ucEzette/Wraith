@@ -101,18 +101,18 @@ Judges can manually flag a pool as "Toxic" to trigger the protocol's defense sta
 *Example: Flag the WRAITH/USDC pool as critical (95.00%):*
 ```bash
 # Usage: node scripts/manual_toxicity.cjs <POOL_ID> <SCORE>
-node scripts/manual_toxicity.cjs 0xbf4bf38f15e9235195e7fe78f4f789a6f5cbd1625fc7e47d5485bfd0f44aeee2 9500
+node scripts/manual_toxicity.cjs 0x931ed6780e94aa42fc3a93681f797c52988fe76e58712666ee960d3913199cff 9500
 ```
 
 #### 3. Clear/Reset Toxicity
 To return a pool to a "Safe" state, use the `clear` command:
 ```bash
-node scripts/manual_toxicity.cjs 0xbf4bf38f15e9235195e7fe78f4f789a6f5cbd1625fc7e47d5485bfd0f44aeee2 clear
+node scripts/manual_toxicity.cjs 0x931ed6780e94aa42fc3a93681f797c52988fe76e58712666ee960d3913199cff clear
 ```
 
 #### 4. Observe the "Poison Fee"
 1. Open the **Wraith Dashboard** at `http://localhost:3000`.
-2. Input the Pool ID: `0xbf4bf38f15e9235195e7fe78f4f789a6f5cbd1625fc7e47d5485bfd0f44aeee2`.
+2. Input the Pool ID: `0x931ed6780e94aa42fc3a93681f797c52988fe76e58712666ee960d3913199cff`.
 3. You will see the **Toxicity Meter** spike to 95% and the **DEFENSE ARMED** status turn green.
 4. Any swap attempt from a non-registered address will now be subject to the **99.9% Poison Fee** override.
 
