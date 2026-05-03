@@ -72,7 +72,7 @@ contract SeedWraithLiquidity is Script {
     address constant POOL_MANAGER = 0x00B036B58a818B1BC34d502D3fE730Db729e62AC;
     address constant QPHAN = 0x9d803A3066C858d714c4F5eE286eaa6249d451aB;
     address constant ECHO = 0x6586035D5e39e30bf37445451b43EEaEeAa1405a;
-    address constant HOOK = 0x62B207729023CD2544a5BE6791f1bb77fb2cc280;
+    address constant HOOK = 0x83cabbF63Cbe0b7EaF14824F4C7529480fAC8280;
 
     function run() public {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
